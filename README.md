@@ -1,63 +1,121 @@
+# Warzone OSM Processor
 
-### Structure
+This command line utility pre-processes OSM data by filtering areas, calculating and building geometries and serializing the results into [Apache Parquet](https://github.com/apache/parquet-format) files for use in the [Warzone OSM Mapmaker](https://github.com/PatrickLindemann/warzone-osm-map-maker/).
 
+## Contents
 
-### Packages
+* [Usage](#usage)
+* [Getting Started](#getting-started)
+    * [Pre-Requisites](#pre-requisites)
+    * [Dependencies](#dependencies)
+        * [Git and C++ Tools](#git-and-c++-tools)
+        * [Libosmium](#libosmium)
+        * [Apache Arrow](#apache-arrow)
+        * [Osmium Tool](#osmium-tool)
+* [Common Problems](#common-problems)
+* [Built With](#built-with)
+* [Authors](#authors)
 
-For runtime:
-protozero (libprotozero-dev)
-osmium (libosmium-dev)
+## Usage
 
-For serialization:
-libarrow-dev
+text
 
-Optional:
-osmium-tool
+## Getting Started
 
+Currently, the installation and usage of the OSM Processor is supported on Unix systems only. This section provides an installation guide for Linux Ubuntu systems.
 
-libprotobuf-dev
-libosmpbf-dev
-libutfcpp-dev
+### Dependencies
+
+This project depends on multiple third-party libraries which have to be installed prior to the project installation. Before you start installing packages, be sure to update your current packages by entering
+
+```
+sudo apt update
+```
+
+Now you can proceed by installing following packages:
+
+#### Git and C++ Tools
+
+```
+apt-get install -y -V \
+  git \
+  g++ \
+  make \
+  cmake \
+  doxygen \
+  graphviz \
+  libboost-dev
+```
+
+#### Libosmium
+
+```
+apt-get install -y -V \
+    libbz2-dev \
+    libexpat1-dev \
+    libgdal-dev \
+    libgeos++-dev \
+    liblz4-dev \
+    libproj-dev \
+    libsparsehash-dev \
+    libprotobuf-dev \
+    libosmpbf-dev \
+    libutfcpp-dev \
+    zlib1g-dev \
+```
+
+#### Apache Arrow
+
+First, you need to add the Apache JFrog repositories to your system:
+
+```
+sudo apt install ca-certificates lsb-release wget -y -V
+wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+```
+
+Now, you can install the required Apache Arrow and Parquet libraries by entering:
+
+```
+apt-get install -y -V \
+    libarrow-dev
+    libparquet-dev
+```
+
+#### Osmium-Tool (Optional)
+
+Todo
 
 ### Installation
 
+1. Clone this repository
+
 ```
-sudo apt-get install libosmium-dev libprotozero-dev
+git clone https://github.com/PatrickLindemann/warzone-osm-processor.git
 ```
 
-sudo apt-get install osmium-tool
+2. Build the project
 
-Arrow / Parquet:
-sudo apt update
-sudo apt install -y -V ca-certificates lsb-release wget
-wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-sudo apt update
-sudo apt install -y -V libarrow-dev # For C++
-sudo apt install -y -V libarrow-glib-dev # For GLib (C)
-sudo apt install -y -V libarrow-dataset-dev # For Apache Arrow Dataset C++
-sudo apt install -y -V libarrow-flight-dev # For Apache Arrow Flight C++
-# Notes for Plasma related packages:
-#   * You need to enable "non-free" component on Debian GNU/Linux
-#   * You need to enable "multiverse" component on Ubuntu
-#   * You can use Plasma related packages only on amd64
-sudo apt install -y -V libplasma-dev # For Plasma C++
-sudo apt install -y -V libplasma-glib-dev # For Plasma GLib (C)
-sudo apt install -y -V libgandiva-dev # For Gandiva C++
-sudo apt install -y -V libgandiva-glib-dev # For Gandiva GLib (C)
-sudo apt install -y -V libparquet-dev # For Apache Parquet C++
-sudo apt install -y -V libparquet-glib-dev # For Apache Parquet GLib (C)
+```
+mkdir build
+cd build
+cmake ..
+make
+```
 
-Programmweise:
+3. Test the program by entering
+```
+./osm-processor -h
+```
 
-    Programm checkt input file ab. Wenn diese input file bereits pre-processed wurde, nimmt sie entsprechende datei aus cache ordner. Wenn nicht, wird die Datei
-    pre-processed (Alle relations mit type=boundary sowie alle zugehörigen nodes und ways rausgezogen) udn in den cache geschrieben. Anschließend werden alle boundaries mit
-    boundary=boundary_type und ggf. admin_level rausgezogen. (-> Extra pre-processing für admin_levels? Ist ja häufigster Fall) Danach werden entsprechende Ergebnisse in spezielles
-    Format gebracht (-> Polygone mit Punkten, Center point und weiteren infos wie name usw.) und mit Arrow serialisiert (Im Pandas format!!!) in output file, damit sie von Pandas gelesen werden können.
+### Common Problems
 
-Parameter:
-    - Input File (.osm / .pbf)
-    - Output File (.parquet) -> All inclusive
-    - Boundary Type: "administrative" "historic" etc.
-    - Admin Level: If Boundary type == administrative
+## Built with
 
+- [**Boost**](https://www.boost.org/) - Free peer-reviewed portable C++ source libraries - [Github](https://github.com/boostorg/boost)
+- [**Libosmium**](https://osmcode.org/libosmium/) - A fast and flexible C++ library for working with OpenStreetMap data - [Github](https://github.com/osmcode/libosmium)
+- [**Apache Arrow**](https://arrow.apache.org/) - A language-independent columnar memory format for flat and hierarchical data - [Github](https://github.com/apache/arrow)
+
+## Authors
+
+- **Patrick Lindemann** - Initial work - Github
+- 
