@@ -1,0 +1,7 @@
+# Ignore the build and lib dirs
+build
+out
+
+# Ignore vs code dirs
+.cache
+.vscode
