@@ -118,4 +118,3 @@ make
 ## Authors
 
 - **Patrick Lindemann** - Initial work - Github
-- 
