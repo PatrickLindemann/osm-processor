@@ -1,7 +1,15 @@
+#ifndef OSM_PROCESSOR_EXTRACTOR
+#define OSM_PROCESSOR_EXTRACTOR
+
 #include <string>
 #include <arrow/api.h>
 
-namespace AreaExtractor
+#include "model.hpp"
+#include "serializer.hpp"
+
+namespace Extractor
 {
-    std::shared_ptr<arrow::Table> run(std::string input_path, std::string boundary_type, double epsilon);
+    void run(Serializer::BoundaryArrowBuilder& builder, std::string input_path, std::string boundary_type, double epsilon);
 }
+
+#endif

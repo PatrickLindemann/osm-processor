@@ -19,16 +19,20 @@
 
 #include "extractor.hpp"
 #include "serializer.hpp"
+
 /**
  * 
  */
-class BoundaryHandler : public osmium::handler::Handler
+class RelationHandler : public osmium::handler::Handler
 {
-
+private:
+    /**
+     * 
+     */
     static double perpendicular_distance(
-        const osmium::Location& point,
-        const osmium::Location& line_start,
-        const osmium::Location& line_end
+    const osmium::Location& point,
+    const osmium::Location& line_start,
+    const osmium::Location& line_end
     ) {
         // Calculate the direction vector of the line
         double dir_x = line_end.lon() - line_start.lon();
@@ -95,30 +99,79 @@ class BoundaryHandler : public osmium::handler::Handler
         // Check if the maximum distance is greater than epsilon
         if (d_max > epsilon)
         {
-            // 
+            // TODO:
         }
         else
         {
-            // 
+            // TODO:
         }
 
     }
 
-    // Calculate the bounding box of a NodeRefList.
-    static osmium::Box calc_bounds(const osmium::NodeRefList& node_refs)
+    /**
+     * TODO:
+     */
+    osmium::memory::Buffer& m_buffer;
+
+    /**
+     * The boundary type that will be filtered for
+     */ 
+    std::string m_boundary_;
+
+    /**
+     * The epsilon used in the Douglas-Peucker compression
+     */
+    double m_epsilon_;
+
+    /**
+     * Storage for way indices that were processed already
+     * This is needed to prevent multiple calculations for the
+     * same ways
+     */
+    std::unordered_set<osmium::object_id_type> processed_ways{};
+
+public:
+
+    explicit RelationHandler(osmium::memory::Buffer& buffer, std::string boundary, double epsilon)
+        : m_buffer(buffer), m_boundary_(boundary), m_epsilon_(epsilon) {}
+
+    void relation(const osmium::Relation& relation)
     {   
-        double min_lon = DBL_MAX, min_lat = DBL_MAX ;
-        double max_lon = -DBL_MAX, max_lat = -DBL_MAX;
-        for (const osmium::NodeRef& n : node_refs)
+        // Filter relations that have the specified boundary type
+        // This has to be done again because the tag_filter only
+        // at the area collection stage
+        const char * boundary = relation.tags()["boundary"];
+        if (boundary && boundary == m_boundary_)
         {
-            min_lon = std::min(min_lon, n.lon());
-            min_lat = std::min(min_lat, n.lat());
-            max_lon = std::max(max_lon, n.lon());
-            max_lat = std::max(max_lat, n.lat());
+            // Retrieve way members
+            for (const osmium::RelationMember& m : relation.members())
+            {
+                // Filter ways
+                if (m.type() != osmium::item_type::way)
+                    continue;
+                // Check if way was already processed
+                if (processed_ways.count(m.ref()))
+                    continue;
+                
+                // Retrieve and compress way
+                const osmium::Way& way = static_cast<const osmium::Way&>(m.get_object()); // TODO: muss den way im buffer verändern bevor der multipolygon collector die areas zusammenbaut
+                // osmium::Way c_way = compress(way.nodes(), m_epsilon_);
+
+                // Remember the way id to prevent multiple compressions
+                processed_ways.insert(m.ref());
+            };
         }
-        return osmium::Box{ min_lon, min_lat, max_lon, max_lat };
+
     }
 
+};
+
+/**
+ * 
+ */
+class AreaHandler : public osmium::handler::Handler
+{
+private:
     /**
      * Calculate the centroid of a NodeRefList by calculating the
      * weigted sum of all nodes.
@@ -141,64 +194,29 @@ class BoundaryHandler : public osmium::handler::Handler
         return osmium::Location{ center.x, center.y };
     }
 
-    /**
-     * The boundary type that will be filtered for
-     */ 
-    std::string m_boundary_;
-
-    /**
-     * The epsilon used in the Douglas-Peucker compression
-     */
-    double m_epsilon_;
+    // Calculate the bounding box of a NodeRefList.
+    static osmium::Box calc_bounds(const osmium::NodeRefList& node_refs)
+    {   
+        double min_lon = DBL_MAX, min_lat = DBL_MAX ;
+        double max_lon = -DBL_MAX, max_lat = -DBL_MAX;
+        for (const osmium::NodeRef& n : node_refs)
+        {
+            min_lon = std::min(min_lon, n.lon());
+            min_lat = std::min(min_lat, n.lat());
+            max_lon = std::max(max_lon, n.lon());
+            max_lat = std::max(max_lat, n.lat());
+        }
+        return osmium::Box{ min_lon, min_lat, max_lon, max_lat };
+    }
 
     /**
      * The arrow table builder
      */ 
-    Serializer::ArrowTableBuilder m_builder_;
-
-    /**
-     * Storage for way indices that were processed already
-     * This is needed to prevent multiple calculations for the
-     * same ways
-     */
-    std::unordered_set<osmium::object_id_type> processed_ways{};
+    Serializer::BoundaryArrowBuilder& m_builder_;
 
 public:
 
-    BoundaryHandler(std::string boundary, double epsilon) 
-    {
-        m_boundary_ = boost::algorithm::to_lower_copy(boundary);
-        m_epsilon_ = epsilon;
-    }
-
-    void relation(const osmium::Relation& relation)
-    {   
-        // Filter relations that have the specified boundary type
-        // This has to be done again because the tag_filter only
-        // at the area collection stage
-        const char * boundary = relation.tags()["boundary"];
-        if (boundary && boundary == m_boundary_)
-        {
-            // Retrieve way members
-            for (const osmium::RelationMember& m : relation.members())
-            {
-                // Filter ways
-                if (m.type() != osmium::item_type::way)
-                    continue;
-                // Check if way was already processed
-                if (processed_ways.contains(m.ref()))
-                    continue;
-                
-                // Retrieve and compress way
-                const osmium::Way& way = static_cast<const osmium::Way&>(m.get_object()); // TODO: muss den way im buffer verändern bevor der multipolygon collector die areas zusammenbaut
-                // osmium::Way c_way = compress(way.nodes(), m_epsilon_);
-
-                // Remember the way id to prevent multiple compressions
-                processed_ways.insert(m.ref());
-            };
-        }
-
-    }
+    AreaHandler(Serializer::BoundaryArrowBuilder& builder) : m_builder_(builder) {};
 
     void area(const osmium::Area& area)
     {    
@@ -232,16 +250,11 @@ public:
         };
 
         // Add boundary to output
-        m_builder_.add(boundary);
+        m_builder_.append(boundary);
 
         // Print area
         // TODO: Only if verbose
         // Model::print_boundary(boundary);
-    }
-
-    const std::shared_ptr<arrow::Table> get_table()
-    {
-        return m_builder_.build();
     }
 
 };
@@ -252,9 +265,9 @@ using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, 
 // The location handler always depends on the index type
 using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
 
-namespace AreaExtractor 
+namespace Extractor 
 {
-    std::shared_ptr<arrow::Table> run(std::string input_path, std::string boundary_type, double epsilon)
+    void run(Serializer::BoundaryArrowBuilder& builder, std::string input_path, std::string boundary_type, double epsilon)
     {   
         // The input file
         const osmium::io::File input_file{ input_path };
@@ -289,23 +302,34 @@ namespace AreaExtractor
         location_handler_type location_handler{ index };
         location_handler.ignore_errors();
 
-        // Create the relation handler
-        BoundaryHandler boundary_handler { boundary_type, epsilon };
-
-        // Pass through file for the second time and read all objects
-        // through the TerritoryHandler and mp manager
+        // Pass through file for the second time and process the objects
         std::cout << "Starting second pass (reading nodes and ways and assembling areas)..." << std::endl;
-        osmium::io::Reader reader{ input_file, osmium::io::read_meta::no }; // Disable reading of meta data
-        osmium::apply(reader, location_handler, boundary_handler, mp_manager.handler([&boundary_handler](const osmium::memory::Buffer& buffer) {
-            osmium::apply(buffer, boundary_handler);
-        }));
+        osmium::io::Reader reader{ input_file, osmium::io::read_meta::no };
+        while (osmium::memory::Buffer input_buffer = reader.read()) {
+            // Create an empty buffer with the same size as the input buffer.
+            osmium::memory::Buffer output_buffer{ input_buffer.committed() };
+
+            // Create the handler that processes boundary relations and handles way compression
+            RelationHandler relation_handler { output_buffer, boundary_type, epsilon };
+
+            // Apply the RelationHandler on the input buffer
+            // The results are stored in the output buffer
+            osmium::apply(input_buffer, location_handler, relation_handler);
+
+            // Create the handler that processes assembled areas, calculates area
+            // centers & bounds and serializes the results to an Arrow table
+            AreaHandler area_handler { builder };
+
+            // Apply the MultipolygonManager and AreaHandler to the output buffer
+            osmium::apply(output_buffer, location_handler, mp_manager.handler([&area_handler](const osmium::memory::Buffer& buffer) {
+                osmium::apply(buffer, area_handler);
+            }));
+        }
         std::cout << "Second pass done." << std::endl;
         reader.close();
 
         std::cout << "Used Memory:" << std::endl;
         osmium::relations::print_used_memory(std::cout, mp_manager.used_memory());
-
-        return boundary_handler.get_table();
     }
 
 }

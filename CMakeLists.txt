@@ -1,6 +1,13 @@
-cmake_minimum_required(VERSION 3.0)
-set (CMAKE_CXX_STANDARD 20)
+cmake_minimum_required(VERSION 3.5)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
+###############################################################################
+## project configuration ######################################################
+###############################################################################
+
+set (CMAKE_CXX_STANDARD 17)
 project(osm-processor VERSION 1.0)
+set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
 
 ###############################################################################
 ## file globbing ##############################################################
@@ -37,22 +44,26 @@ file(COPY ${data} DESTINATION resources)
 ## dependencies ###############################################################
 ###############################################################################
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
 
-FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options filesystem)
-INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
+# Boost
+find_package(Boost REQUIRED COMPONENTS program_options filesystem)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
+# This defines the variables OSMIUM_INCLUDE_DIRS that contains all library names
+# that we need to link into the program.
+set(Osmium_DEBUG true)
+find_package(Osmium REQUIRED)
+include_directories(${OSMIUM_INCLUDE_DIRS})
+
+# Arrow dependencies
 find_package(Arrow REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ARROW_LIBRARIES})
 
 find_package(Parquet)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PARQUET_LIBRARIES})
-
-# This defines the variables OSMIUM_INCLUDE_DIRS that contains all library names
-# that we need to link into the program.
-find_package(Osmium REQUIRED COMPONENTS io pbf xml)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OSMIUM_LIBRARIES})
 
 ###############################################################################
 ## testing ####################################################################

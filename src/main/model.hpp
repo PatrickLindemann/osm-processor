@@ -1,3 +1,6 @@
+#ifndef OSM_PROCESSOR_MODEL
+#define OSM_PROCESSOR_MODEL
+
 #include <osmium/osm/box.hpp>
 #include <osmium/osm/area.hpp>
 #include <osmium/osm/location.hpp>
@@ -20,7 +23,7 @@ namespace Model
     };
 
     /**
-     * Prints a boundary to the console
+     * Prints a boundary to the console in WKT (well-known text format)
      * 
      * @param b The boundary
      */
@@ -51,3 +54,5 @@ namespace Model
         );
     }
 }
+
+#endif

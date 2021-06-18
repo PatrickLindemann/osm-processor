@@ -8,15 +8,10 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 
-#include <arrow/api.h>
-#include <arrow/io/api.h>
-#include <parquet/arrow/reader.h>
-#include <parquet/arrow/writer.h>
-#include <parquet/exception.h>
-
 #include <osmium/memory/buffer.hpp>
 
 #include "extractor.hpp"
+#include "serializer.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -71,14 +66,6 @@ int main(int argc, char* argv[])
     if (input == "")
     {
         std::cerr << "[Error] No input file specified" << std::endl;
-        return 1;
-    }
-    // Verify input extension
-    std::string input_extension = fs::extension(input);
-    boost::algorithm::to_lower(input_extension);
-    if (!(input_extension == ".pbf" || input_extension == ".osm"))
-    {
-        std::cerr << "[Error] Invalid input file format. Allowed formats are: .pbf .osm" << std::endl;
         return 1;
     }
     // Validate that input file exists
@@ -142,30 +129,17 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    // Process input
-    std::shared_ptr<arrow::Table> table;
+    Serializer::BoundaryArrowBuilder builder;
     try
     {   
         // Extract areas with the specified criteria from the input file
-        table = AreaExtractor::run(input_path.string(), boundary_type, compression_level);
+        Extractor::run(builder, input_path.string(), boundary_type, compression_level);
     } catch (std::exception& ex) {
-        std::cerr << "ERROR IN MAIN: " << ex.what() << std::endl;
+        std::cerr << "[Error]: " << ex.what() << std::endl;
         std::exit(1);
     }
-
-    // TODO: Result should be an apache arrow table which can be written to a file here
-    std::shared_ptr<arrow::io::FileOutputStream> outfile;
-    PARQUET_ASSIGN_OR_THROW(
-        outfile,
-        arrow::io::FileOutputStream::Open(output_path.string())
-    );
-
-    // The last argument to the function call is the size of the RowGroup in
-    // the parquet file. Normally you would choose this to be rather large but
-    // for the example, we use a small value to have multiple RowGroups.
-    PARQUET_THROW_NOT_OK(
-        parquet::arrow::WriteTable(*table, arrow::default_memory_pool(), outfile, 3)
-    );
+    builder.finish();
+    builder.write(output_path.string());
 
     return 0;
 }

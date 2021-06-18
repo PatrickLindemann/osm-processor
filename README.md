@@ -53,13 +53,9 @@ apt-get install -y -V \
 apt-get install -y -V \
     libbz2-dev \
     libexpat1-dev \
-    libgdal-dev \
-    libgeos++-dev \
     liblz4-dev \
     libproj-dev \
     libsparsehash-dev \
-    libprotobuf-dev \
-    libosmpbf-dev \
     libutfcpp-dev \
     zlib1g-dev \
 ```
