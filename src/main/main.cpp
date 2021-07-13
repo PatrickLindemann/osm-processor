@@ -1,5 +1,6 @@
-#include <exception>
+#include <string>
 #include <iostream>
+#include <exception>
 #include <algorithm>
 
 #include <boost/algorithm/string.hpp>
@@ -7,23 +8,28 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
-
 #include <osmium/memory/buffer.hpp>
 
 #include "extractor.hpp"
-#include "serializer.hpp"
+#include "generator.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
+
+using namespace mapmaker;
 
 static bool verbose;
 
 int main(int argc, char* argv[])
 {      
-    std::string input;
-    std::string output;
-    std::string boundary_type;
-    double compression_level;
+    fs::path input;
+    fs::path output;
+    int width;
+    int height;
+    int territory_level;
+    int bonus_level;
+    double epsilon;
+    bool cache;
 
     // Get the directory of the executable
     const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
@@ -31,16 +37,28 @@ int main(int argc, char* argv[])
     // Create the parameters and descriptions
     po::options_description desc("Program options");
     desc.add_options()
-        ("input", po::value<std::string>(&input),
+        ("input", po::value<fs::path>(&input),
             "sets the input file path\nallowed file formats: .pbf, .osm")
-        ("output,o", po::value<std::string>(&output),
-                "sets the target directory")
-        ("boundary-type,b", po::value<std::string>(&boundary_type)->default_value("administrative"),
-                "sets the osm boundary type that will be filtered for")
-        ("compression-level,c", po::value<double>(&compression_level)->default_value(1.0),
-                "sets the minimum distance threshold between nodes for the douglas-peucker compression algorithm")
-        // ("cache,c", po::bool_switch(&cache_flag)->default_value(false),
-        //        "sets the cache flag, which enables caching of pre-processed files for faster executions")
+        ("output,o", po::value<fs::path>(&output),
+                "sets the target file path")
+        ("width,w", po::value<int>(&width)->default_value(0),
+            "sets the generated map width in pixels."
+            "\nif set to 0, the width will be determined automatically.")
+        ("height,h", po::value<int>(&height)->default_value(0),
+            "sets the generated map height in pixels."
+            "\nif set to 0, the height will be determined automatically.")
+        ("territory-level,l", po::value<int>(&territory_level)->default_value(6),
+            "sets which boundaries should be used as territories."
+            "\ninteger between 1 and 12.")
+        ("bonus-level,b", po::value<int>(&bonus_level)->default_value(0),
+            "sets which boundaries should be used as bonus links."
+            "\ninteger between 1 and 12. if set to 0, no bonus links will be created.")
+        ("epsilon,e", po::value<double>(&epsilon)->default_value(0.0),
+                "sets the minimum distance threshold between nodes for the"
+                "douglas-peucker compression algorithm."
+                "\nif set to 0, no compression will be applied.")
+        ("cache,c", po::bool_switch(&cache)->default_value(false),
+                "enables caching of pre-processed osm files for faster executions")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "sets the verbose flag which enables debug logs")
         ("help,h", "shows this help message")
     ;
@@ -63,11 +81,12 @@ int main(int argc, char* argv[])
     }
 
     // Verify that input was provided
-    if (input == "")
+    if (input.string() == "")
     {
-        std::cerr << "[Error] No input file specified" << std::endl;
+        std::cout << "[Error] " << "No input file specified" << std::endl;
         return 1;
     }
+        
     // Validate that input file exists
     fs::path input_path = fs::path(input);
     try
@@ -76,70 +95,75 @@ int main(int argc, char* argv[])
     }
     catch (std::exception &ex)
     {
-        std::cerr << "[Error] Specified input file " << input_path << " does not exist" << std::endl;
+        std::cout << "[Error] " << "Specified input file " << input_path << " does not exist." << std::endl;
         return 1;
     }
 
+    // Validate output path
     // If no output file has been specified, use the input file name
     fs::path output_path;
-    if (output != "")
+    if (output.string() != "")
     {
        output_path = fs::path(output);
     }
     else
     {
-         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".parquet"));
+         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".wzm"));
     }
-
-    // Validate boundary type
-    boost::algorithm::to_lower(boundary_type);
-    if (
-        !(
-        boundary_type == "administrative"
-            || boundary_type == "aboriginal_lands" 
-            || boundary_type == "hazard" 
-            || boundary_type == "maritime" 
-            || boundary_type == "marker" 
-            || boundary_type == "national_park" 
-            || boundary_type == "political" 
-            || boundary_type == "postal_code" 
-            || boundary_type == "special_economic_zone"
-            || boundary_type == "protected_area"
-        )
-    )
+    
+    // Validate dimensions
+    if (width < 0)
     {
-        std::cerr << "[Error] Specified boundary type " << boundary_type << " is invalid. Valid values are:\n"
-                    "aboriginal_lands\n"
-                    "administrative\n"
-                    "hazard\n"
-                    "maritime\n"
-                    "marker\n"
-                    "national_park\n"
-                    "political\n"
-                    "postal_code\n"
-                    "special_economic_zone\n"
-                    "protected_area" << std::endl;
+        std::cout << "[Error] " << "Invalid width " << width << " specified. Dimensions have to be greater or equal to 0 (auto)." << std::endl;
+        return 1;
+    }
+    if (height < 0)
+    {
+        std::cout << "[Error] " << "Invalid height " << height << " specified. Dimensions have to be greater or equal to 0 (auto)." << std::endl;
         return 1;
     }
 
-    // Validate compression_level
-    if (compression_level < 0)
+    // Validate levels
+    if (territory_level < 1 || territory_level > 12)
+    {
+        std::cout << "[Error] " << "Invalid territory level " << territory_level << " specified. Levels must be integers between 1 and 12." << std::endl;
+        return 1;
+    }
+    if (bonus_level != 0)
+    {
+        if (bonus_level < 1 || bonus_level > 12)
+        {
+            std::cout << "[Error] " << "Invalid bonus level " << bonus_level << " specified. Levels must be integers between 1 and 12." << std::endl;
+            return 1;
+        }
+        else if (territory_level >= bonus_level)
+        {
+            std::cout << "[Error] " << "Bonus level " << bonus_level << " is smaller than territory level " << territory_level << "." << std::endl;
+            return 1;
+        }
+    }
+
+    // Validate epsilon
+    if (epsilon < 0)
     {   
-        std::cerr << "[Error] Specified compression_level " << compression_level << " is invalid. The compression level has to be a value greater than 0." << std::endl;
+        std::cout << "[Error] " << "Specified epsilon " << epsilon << " is invalid. The compression level has to be a value greater than 0." << std::endl;
         return 1;
     }
     
-    Serializer::BoundaryArrowBuilder builder;
     try
     {   
         // Extract areas with the specified criteria from the input file
-        Extractor::run(builder, input_path.string(), boundary_type, compression_level);
+        std::vector<Area> areas = extractor::run(input_path.string(), cache);
+
+        // Create the map
+        Map map = generator::run(areas, width, height, territory_level, bonus_level, epsilon);
+
+        // Export as svg
+
     } catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;
         std::exit(1);
     }
-    builder.finish();
-    builder.write(output_path.string());
 
     return 0;
 }

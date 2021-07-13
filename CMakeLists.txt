@@ -5,7 +5,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 ## project configuration ######################################################
 ###############################################################################
 
-set (CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 project(osm-processor VERSION 1.0)
 set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
 
@@ -44,6 +44,15 @@ file(COPY ${data} DESTINATION resources)
 ## dependencies ###############################################################
 ###############################################################################
 
+find_package(BZip2 REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${BZIP2_LIBRARIES})
+
+find_package(ZLIB REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${ZLIB_LIBRARIES})
+
+find_package(EXPAT REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${EXPAT_LIBRARIES})
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
@@ -54,16 +63,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
 # This defines the variables OSMIUM_INCLUDE_DIRS that contains all library names
 # that we need to link into the program.
-set(Osmium_DEBUG true)
 find_package(Osmium REQUIRED)
 include_directories(${OSMIUM_INCLUDE_DIRS})
-
-# Arrow dependencies
-find_package(Arrow REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${ARROW_LIBRARIES})
-
-find_package(Parquet)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PARQUET_LIBRARIES})
 
 ###############################################################################
 ## testing ####################################################################
