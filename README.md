@@ -1,6 +1,6 @@
-# Warzone OSM Processor
+# Warzone OSM Mapmaker
 
-This command line utility pre-processes OSM data by filtering areas, calculating and building geometries and serializing the results into [Apache Parquet](https://github.com/apache/parquet-format) files for use in the [Warzone OSM Mapmaker](https://github.com/PatrickLindemann/warzone-osm-map-maker/).
+This command line utility creates maps for the online strategy game [Warzone](https://www.warzone.com/) by using OpenStreetMap data.
 
 ## Contents
 
@@ -60,23 +60,6 @@ apt-get install -y -V \
     zlib1g-dev \
 ```
 
-#### Apache Arrow
-
-First, you need to add the Apache JFrog repositories to your system:
-
-```
-sudo apt install ca-certificates lsb-release wget -y -V
-wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-```
-
-Now, you can install the required Apache Arrow and Parquet libraries by entering:
-
-```
-apt-get install -y -V \
-    libarrow-dev
-    libparquet-dev
-```
-
 #### Osmium-Tool (Optional)
 
 Todo
@@ -109,7 +92,6 @@ make
 
 - [**Boost**](https://www.boost.org/) - Free peer-reviewed portable C++ source libraries - [Github](https://github.com/boostorg/boost)
 - [**Libosmium**](https://osmcode.org/libosmium/) - A fast and flexible C++ library for working with OpenStreetMap data - [Github](https://github.com/osmcode/libosmium)
-- [**Apache Arrow**](https://arrow.apache.org/) - A language-independent columnar memory format for flat and hierarchical data - [Github](https://github.com/apache/arrow)
 
 ## Authors
 
