@@ -5,3 +5,4 @@ out
 # Ignore vs code dirs
 .cache
 .vscode
+.clangd

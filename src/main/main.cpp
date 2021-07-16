@@ -7,16 +7,17 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <boost/program_options.hpp>
 #include <osmium/memory/buffer.hpp>
+#include <boost/program_options.hpp>
+#include <boost/program_options/value_semantic.hpp>
 
-#include "extractor.hpp"
-#include "generator.hpp"
+#include "mapmaker/model.hpp"
+#include "mapmaker/builder.hpp"
+#include "io/reader.hpp"
+#include "io/writer.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
-
-using namespace mapmaker;
 
 static bool verbose;
 
@@ -24,11 +25,11 @@ int main(int argc, char* argv[])
 {      
     fs::path input;
     fs::path output;
-    int width;
-    int height;
-    int territory_level;
-    int bonus_level;
-    double epsilon;
+    int32_t territory_level;
+    int32_t bonus_level;
+    int32_t width;
+    int32_t height;
+    double_t epsilon;
     bool cache;
 
     // Get the directory of the executable
@@ -41,19 +42,19 @@ int main(int argc, char* argv[])
             "sets the input file path\nallowed file formats: .pbf, .osm")
         ("output,o", po::value<fs::path>(&output),
                 "sets the target file path")
-        ("width,w", po::value<int>(&width)->default_value(0),
-            "sets the generated map width in pixels."
-            "\nif set to 0, the width will be determined automatically.")
-        ("height,h", po::value<int>(&height)->default_value(0),
-            "sets the generated map height in pixels."
-            "\nif set to 0, the height will be determined automatically.")
-        ("territory-level,l", po::value<int>(&territory_level)->default_value(6),
+        ("territory-level,l", po::value<int32_t>(&territory_level)->default_value(6),
             "sets which boundaries should be used as territories."
             "\ninteger between 1 and 12.")
-        ("bonus-level,b", po::value<int>(&bonus_level)->default_value(0),
+        ("bonus-level,b", po::value<int32_t>(&bonus_level)->default_value(0),
             "sets which boundaries should be used as bonus links."
             "\ninteger between 1 and 12. if set to 0, no bonus links will be created.")
-        ("epsilon,e", po::value<double>(&epsilon)->default_value(0.0),
+        ("width,w", po::value<int32_t>(&width)->default_value(0),
+            "sets the generated map width in pixels."
+            "\nif set to 0, the width will be determined automatically.")
+        ("height,h", po::value<int32_t>(&height)->default_value(0),
+            "sets the generated map height in pixels."
+            "\nif set to 0, the height will be determined automatically.")
+        ("epsilon,e", po::value<double_t>(&epsilon)->default_value(0.0),
                 "sets the minimum distance threshold between nodes for the"
                 "douglas-peucker compression algorithm."
                 "\nif set to 0, no compression will be applied.")
@@ -108,7 +109,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".wzm"));
+         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".svg"));
     }
     
     // Validate dimensions
@@ -153,12 +154,21 @@ int main(int argc, char* argv[])
     try
     {   
         // Extract areas with the specified criteria from the input file
-        std::vector<Area> areas = extractor::run(input_path.string(), cache);
+        std::vector<mapmaker::model::Boundary> boundaries = io::reader::read_osm(input_path.string(), cache);
 
-        // Create the map
-        Map map = generator::run(areas, width, height, territory_level, bonus_level, epsilon);
+        // Build the map
+        mapmaker::builder::Builder builder {
+            boundaries,
+            territory_level,
+            bonus_level,
+            width,
+            height,
+            epsilon
+        };
+        mapmaker::model::Map map = builder.build();
 
         // Export as svg
+        io::writer::write_svg(output_path.string(), map);
 
     } catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;

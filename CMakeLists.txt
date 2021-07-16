@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 project(osm-processor VERSION 1.0)
 set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
 
+add_compile_options(-I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9)
+
 ###############################################################################
 ## file globbing ##############################################################
 ###############################################################################
