@@ -2,6 +2,7 @@
 #define GEOMETRY_MODEL_HPP
 
 #include <cmath>
+#include <limits>
 #include <math.h>
 #include <array>
 #include <vector>
@@ -118,36 +119,36 @@ namespace geometry
         {
         public:
 
-            typedef Point<T> point_type;
-            typedef std::array<point_type, 2> point_array_type;
-            typedef typename point_array_type::iterator iterator;
-            typedef typename point_array_type::const_iterator const_iterator;
+            typedef Point<T> point_t;
+            typedef std::array<point_t, 2> point_list;
+            typedef typename point_list::iterator iterator;
+            typedef typename point_list::const_iterator const_iterator;
 
             Segment() {};
-            Segment(point_type& first, point_type& last) : points(first, last) {};
+            Segment(point_t& first, point_t& last) : points(first, last) {};
 
             ~Segment() {};
 
             /* Accessors */
 
-            const point_type& first() const
+            const point_t& first() const
             {
                 return points[0];
             }
 
-            const point_type& last() const
+            const point_t& last() const
             {
                 return points[1];
             }
 
             /* Accessor operators */
 
-            point_type& operator[](const std::size_t index)
+            point_t& operator[](const std::size_t index)
             {
                 return points[index];
             }
 
-            const point_type& operator[](const std::size_t index) const
+            const point_t& operator[](const std::size_t index) const
             {
                 return points[index];
             }
@@ -191,7 +192,7 @@ namespace geometry
 
             /* Members */
 
-            point_array_type points;
+            point_list points;
 
         };
 
@@ -202,37 +203,37 @@ namespace geometry
         {
         public:
 
-            typedef Point<T> point_type;
-            typedef std::vector<point_type> point_array_type;
-            typedef typename point_array_type::iterator iterator;
-            typedef typename point_array_type::const_iterator const_iterator;
+            typedef Point<T> point_t;
+            typedef std::vector<point_t> point_list;
+            typedef typename point_list::iterator iterator;
+            typedef typename point_list::const_iterator const_iterator;
 
             Line() {};
-            Line(point_array_type& points) { this->points = points; };
-            Line(std::initializer_list<point_type>& points) { this->points = points; };
+            Line(point_list& points) { this->points = points; };
+            Line(std::initializer_list<point_t>& points) { this->points = points; };
 
             ~Line() {};
 
             /* Accessors */
 
-            const point_type& first() const
+            const point_t& first() const
             {
                 return points[0];
             }
 
-            const point_type& last() const
+            const point_t& last() const
             {
                 return points[points.size() - 1];
             }
 
             /* Accessor operators */
 
-            point_type& operator[](const std::size_t index)
+            point_t& operator[](const std::size_t index)
             {
                 return points[index];
             }
 
-            const point_type& operator[](const std::size_t index) const
+            const point_t& operator[](const std::size_t index) const
             {
                 return points[index];
             }
@@ -276,7 +277,7 @@ namespace geometry
 
             /* Members */
 
-            point_array_type points;
+            point_list points;
 
         };
 
@@ -287,34 +288,34 @@ namespace geometry
         {
         public:
 
-            typedef Point<T> point_type;
+            typedef Point<T> point_t;
 
             Rectangle() {};
             Rectangle(T min_x, T min_y, T max_x, T max_y) : min(min_x, min_y), max(max_x, max_y) {};
-            Rectangle(point_type& min, point_type& max) { this->min = min; this->max = max; };
+            Rectangle(point_t& min, point_t& max) { this->min = min; this->max = max; };
 
             ~Rectangle() {};
 
             /* Accessors */
 
-            const point_type bottom_left() const
+            const point_t bottom_left() const
             {
-                return point_type{ this->min };
+                return point_t{ this->min };
             }
 
-            const point_type top_left() const
+            const point_t top_left() const
             {
-                return point_type{ this->min.x, this->max.y };
+                return point_t{ this->min.x, this->max.y };
             }
 
-            const point_type top_right() const
+            const point_t top_right() const
             {
-                return point_type{ this->max };
+                return point_t{ this->max };
             }
 
-            const point_type bottom_right() const
+            const point_t bottom_right() const
             {
-                return point_type{ this->max.x, this->min.y };
+                return point_t{ this->max.x, this->min.y };
             }
 
             /* Misc */
@@ -344,9 +345,25 @@ namespace geometry
                 return 2 * (this->width() + this->height());
             }
 
+            Rectangle<T>& extend(const point_t& p) {
+                if (p.x < this->min.x) this->min.x = p.x;
+                if (p.y < this->min.y) this->min.y = p.y;
+                if (p.x > this->max.x) this->max.x = p.x;
+                if (p.y < this->max.y) this->max.y = p.y;
+                return *this;
+            }
+
+            Rectangle<T>& extend(const Rectangle<T>& other) {
+                if (other.min.x < this->min.x) this->min.x = other.min.x;
+                if (other.min.y < this->min.y) this->min.y = other.min.y;
+                if (other.max.x > this->max.x) this->max.x = other.max.x;
+                if (other.max.y > this->max.y) this->max.y = other.max.y;
+                return *this;
+            }
+
             /* Members */
 
-            point_type min, max;
+            point_t min, max;
 
         };
 
@@ -357,11 +374,11 @@ namespace geometry
         {
         public:
 
-            typedef Point<T> point_type;
+            typedef Point<T> point_t;
 
             Circle() {};
-            Circle(point_type& center) { this->center = center; };
-            Circle(point_type& center, T radius) { this->center = center; this->radius = radius; };
+            Circle(point_t& center) { this->center = center; };
+            Circle(point_t& center, T radius) { this->center = center; this->radius = radius; };
 
             ~Circle() {};
 
@@ -389,7 +406,7 @@ namespace geometry
 
             /* Members */
 
-            point_type center;
+            point_t center;
 
             T radius;
 
@@ -402,14 +419,12 @@ namespace geometry
         {
         public:
 
-            typedef Point<T> point_type;
-            typedef std::vector<point_type> point_array_type;
-            typedef point_array_type outer_type;
-            typedef std::vector<point_array_type> inner_type;
+            typedef Point<T> point_t;
+            typedef std::vector<point_t> point_list;
 
             Polygon() {};
-            Polygon(outer_type& outer) { this->outer = outer; };
-            Polygon(outer_type& outer, inner_type& inners) { this->outer = outer; this->inners = inners; };
+            Polygon(point_list& outer) { this->outer = outer; };
+            Polygon(point_list& outer, std::vector<point_list>& inners) { this->outer = outer; this->inners = inners; };
 
             ~Polygon() {};
 
@@ -422,9 +437,8 @@ namespace geometry
 
             /* Members */
 
-            outer_type outer;
-
-            inner_type inners;
+            point_list outer;
+            std::vector<point_list> inners;
 
         };
 
@@ -435,12 +449,12 @@ namespace geometry
         {
         public:
 
-            typedef Polygon<T> polygon_type;
-            typedef std::vector<polygon_type> polygon_array_type;
+            typedef Polygon<T> polygon_t;
+            typedef std::vector<polygon_t> polygon_list;
 
             MultiPolygon() {};
-            MultiPolygon(polygon_array_type& polygons) { this->polygons = polygons; };
-            MultiPolygon(std::initializer_list<polygon_type>& polygons) { this->poylgons = polygons; };
+            MultiPolygon(polygon_list& polygons) { this->polygons = polygons; };
+            MultiPolygon(std::initializer_list<polygon_t>& polygons) { this->poylgons = polygons; };
 
             ~MultiPolygon() {};
 
@@ -448,15 +462,20 @@ namespace geometry
 
             const bool valid() const
             {
-                for (const polygon_type& p : polygons)
+                for (const polygon_t& p : polygons)
                     if (!p.valid())
                         return false;
                 return true;
             }
 
+            const bool is_polygon() const
+            {
+                return this->polygons.size() == 1;
+            }
+
             /* Members */
 
-            polygon_array_type polygons;
+            polygon_list polygons;
 
         };
     

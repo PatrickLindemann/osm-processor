@@ -22,67 +22,46 @@ namespace mapmaker
             
             int32_t m_territory_level;
             int32_t m_bonus_level;
-            int32_t m_width;
-            int32_t m_height;
             double_t m_epsilon;
-            boundary_array_type m_boundaries;
+            boundary_array_type m_territories;
+            boundary_array_type m_bonus_links;
 
         public:
 
             Builder() {};
-            Builder(boundary_array_type& boundaries, int32_t territory_level)
-            : m_boundaries(boundaries),
-              m_territory_level(territory_level)
-            {};
-            Builder(boundary_array_type& boundaries, int32_t territory_level, int32_t bonus_level)
-            : m_territory_level(territory_level),
-              m_bonus_level(bonus_level)
-            {};
-            Builder(boundary_array_type& boundaries, int32_t territory_level, int32_t bonus_level, int32_t width, int32_t height) 
-            : m_boundaries(boundaries),
-              m_territory_level(territory_level),
-              m_bonus_level(bonus_level),
-              m_width(width),
-              m_height(height)
-            {};
-            Builder(boundary_array_type& boundaries, int32_t territory_level, int32_t bonus_level, int32_t width, int32_t height, double_t epsilon) 
-            : m_boundaries(boundaries),
-              m_territory_level(territory_level),
-              m_bonus_level(bonus_level),
-              m_width(width),
-              m_height(height),
-              m_epsilon(epsilon)
-            {};
-
             ~Builder() {};
 
-            /* Accessors and Setters */
+            /* Setters */
 
-            const int32_t width() const
+            void set_territories(boundary_array_type& boundaries, int32_t territory_level)
             {
-                return m_width;
+                this->m_territories = {};
+                this->m_territory_level = territory_level;
+                for (model::Boundary& boundary : boundaries)
+                    if (boundary.level == territory_level)
+                        this->m_territories.push_back(boundary);
             }
 
-            void set_width(const int32_t width)
+            void set_bonus_links(boundary_array_type& boundaries, int32_t bonus_level)
             {
-                this->m_width = width;
+                this->m_bonus_links = {};
+                this->m_bonus_level = bonus_level;
+                for (model::Boundary& boundary : boundaries)
+                    if (boundary.level == bonus_level)
+                        this->m_territories.push_back(boundary);
             }
 
-            const int32_t height() const
+            void set_epsilon(double_t epsilon)
             {
-                return m_height;
-            }
-
-            void set_height(const int32_t height)
-            {
-                this->m_height = height;
+                this->m_epsilon = epsilon;
             }
 
             /* Methods */
 
             model::Map build() const
             {
-                return model::Map{};
+                // TODO Compression, Relationships, center points, polygon checks, troop circle position, etc.
+                return model::Map{ m_territories, m_bonus_links };
             }
             
         };

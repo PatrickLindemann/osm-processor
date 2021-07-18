@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geometry/model.hpp"
+#include "mapmaker/model.hpp"
 
 namespace geometry
 {
@@ -110,7 +111,7 @@ namespace geometry
          * @return The centroid as Point
          */
         template <typename T>
-        inline Point<T> center(const std::initializer_list<Point<T>>& points)
+        inline Point<T> center(const std::vector<Point<T>>& points)
         {
             Point center;
             for (const Point<T>& p : points)
@@ -126,10 +127,11 @@ namespace geometry
          * @return The minimal bounding box
          */
         template <typename T>
-        inline Rectangle<T> bounds(const std::initializer_list<Point<T>>& points)
+        inline Rectangle<T> bounds(const std::vector<Point<T>>& points)
         {   
-            double min_x = DBL_MAX, min_y = DBL_MAX ;
-            double max_x = -DBL_MAX, max_y = -DBL_MAX;
+            std::numeric_limits<T> limits;
+            T min_x = limits.max(), min_y = limits.max() ;
+            T max_x = limits.min(), max_y = limits.min();
             for (const Point<T>& p : points)
             {
                 min_x = std::min(min_x, p.x);
@@ -141,6 +143,36 @@ namespace geometry
         }
 
         /**
+         * Calculates the minimal bounding box of a Polygon.
+         * 
+         * @param polygon The Polygon
+         * @return The minimal bounding box
+         */
+        template <typename T>
+        inline Rectangle<T> bounds(const Polygon<T>& polygon)
+        {   
+            return bounds(polygon.outer);
+        }
+
+        /**
+         * Calculates the minimal bounding box of a MultiPolygon.
+         * 
+         * @param multipolygon The MultiPolygon
+         * @return The minimal bounding box
+         */
+        template <typename T>
+        inline Rectangle<T> bounds(const MultiPolygon<T>& multipolygon)
+        {   
+            std::numeric_limits<T> limits;
+            Rectangle<T> result = { limits.max(), limits.max(), limits.min(), limits.min() };
+            for (const Polygon<T>& polygon : multipolygon.polygons)
+            {
+                result.extend(bounds(polygon.outer));
+            }
+            return result;
+        }
+
+        /**
          * Compresses a list of points with the Douglas-Peucker-Algorithm.
          * https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
          *
@@ -149,7 +181,7 @@ namespace geometry
         template <typename T>
         inline void compress(
             const std::vector<Point<T>>& out,
-            const std::initializer_list<Point<T>>& points,
+            const std::vector<Point<T>>& points,
             const double_t epsilon
         ) {
             using point_list = std::vector<Point<T>>;

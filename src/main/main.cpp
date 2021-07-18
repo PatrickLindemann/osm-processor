@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
         ("bonus-level,b", po::value<int32_t>(&bonus_level)->default_value(0),
             "sets which boundaries should be used as bonus links."
             "\ninteger between 1 and 12. if set to 0, no bonus links will be created.")
-        ("width,w", po::value<int32_t>(&width)->default_value(0),
+        ("width,w", po::value<int32_t>(&width)->default_value(1000),
             "sets the generated map width in pixels."
             "\nif set to 0, the width will be determined automatically.")
         ("height,h", po::value<int32_t>(&height)->default_value(0),
@@ -123,6 +123,11 @@ int main(int argc, char* argv[])
         std::cout << "[Error] " << "Invalid height " << height << " specified. Dimensions have to be greater or equal to 0 (auto)." << std::endl;
         return 1;
     }
+    if (width == 0 && height == 0)
+    {
+        std::cout << "[Error] " << "Width and height were both set to 0 (auto). At least one dimension must be set." << std::endl;
+        return 1;
+    }
 
     // Validate levels
     if (territory_level < 1 || territory_level > 12)
@@ -157,18 +162,16 @@ int main(int argc, char* argv[])
         std::vector<mapmaker::model::Boundary> boundaries = io::reader::read_osm(input_path.string(), cache);
 
         // Build the map
-        mapmaker::builder::Builder builder {
-            boundaries,
-            territory_level,
-            bonus_level,
-            width,
-            height,
-            epsilon
-        };
+        mapmaker::builder::Builder builder {};
+        builder.set_territories(boundaries, territory_level);
+        if (bonus_level > 0)
+            builder.set_bonus_links(boundaries, bonus_level);
+        if (epsilon > 0)
+            builder.set_epsilon(epsilon);
         mapmaker::model::Map map = builder.build();
 
-        // Export as svg
-        io::writer::write_svg(output_path.string(), map);
+        // Export map as svg
+        io::writer::write_svg(output_path.string(), map, width, height);
 
     } catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;

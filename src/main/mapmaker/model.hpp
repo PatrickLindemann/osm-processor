@@ -1,6 +1,7 @@
 #ifndef MAPMAKER_MODEL_HPP
 #define MAPMAKER_MODEL_HPP
 
+#include <any>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
@@ -12,16 +13,6 @@ namespace mapmaker
 
     namespace model
     {
-
-        /* Base class */
-
-        class Entity {};
-
-        enum Type
-        {
-            eBoundary,
-            eMap
-        };
 
         /* Boundary */
 
@@ -36,34 +27,62 @@ namespace mapmaker
             std::string wikidata = "";
         };
 
+        /* Relation */
+        
+        enum RelationType
+        {
+            NextTo
+        };
+
+        struct Relation
+        {
+            int64_t left_id;
+            int64_t right_id;
+            RelationType type;
+        };
+
         /* Map */
 
         class Map
         {
         public:
 
-            typedef std::vector<Boundary> boundary_array_type;
+            typedef std::unordered_map<int64_t, Boundary> boundaries_type;
+            typedef std::unordered_map<int64_t, Relation> relations_type;
+
+        private:
+
+            boundaries_type m_territories;
+            boundaries_type m_bonus_links;
+            relations_type m_relations;
+
+        public:
 
             Map() {};
-            Map(boundary_array_type& boundaries) { this->territories = boundaries; };
-            Map(boundary_array_type& boundaries, int width, int height)
+            Map(const std::vector<Boundary>& territories)
             {
-                this->territories = boundaries;
-                this->width = width;
-                this->height = height;
+                for (const Boundary& t : territories)
+                    this->m_territories[t.id] = t;
+            };
+            Map(const std::vector<Boundary>& territories, const std::vector<Boundary>& bonus_links)
+            {
+                for (const Boundary& t : territories)
+                    this->m_territories[t.id] = t;
+                for (const Boundary& b : bonus_links)
+                    this->m_bonus_links[b.id] = b;
             };
 
-            /* Members */
+            /* Accessors */
 
-            int width;
+            const boundaries_type& territories() const
+            {
+                return m_territories;
+            }
 
-            int height;
-
-            boundary_array_type territories;
-
-            boundary_array_type bonus_links;
-
-            std::unordered_map<int64_t, std::unordered_set<int64_t>> relations;
+            const boundaries_type& bonus_links() const
+            {
+                return m_bonus_links;
+            }
 
         };
 
