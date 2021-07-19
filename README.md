@@ -7,12 +7,15 @@ This command line utility creates maps for the online strategy game [Warzone](ht
 * [Description](#description)
 * [Getting Started](#getting-started)
     * [Pre-Requisites](#pre-requisites)
-    * [Dependencies](#dependencies)
-        * [Git and C++ Tools](#git-and-c++-tools)
+        * [Git and C++ Tools](#git-and-c-tools)
         * [Libosmium](#libosmium)
-        * [Osmium Tool](#osmium-tool)
-    * [Installation]
+        * [Osmium Tool (Optional)](#osmium-tool-optional)
+    * [Installation](#installation)
 * [Usage](#usage)
+    * [Downloading OSM data](#getting-osm-data-extracts)
+    * [Creating the map](#creating-the-map)
+    * [Uploading the map](#uploading-the-map)
+    * [Adding metadata](#adding-metadata)
     * [Program Options](#program-options)
 * [Built With](#built-with)
 * [Authors](#authors)
@@ -26,7 +29,7 @@ This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted
 
 Currently, the installation and usage of the Mapmaker is supported on Unix systems only. This section provides an installation guide for Linux Ubuntu systems.
 
-### Dependencies
+### Pre-Requisites
 
 The project depends on multiple third-party libraries which have to be installed prior to the project setup. Before you start installing packages, be sure to update your current packages by entering
 
@@ -108,11 +111,11 @@ If you are not familiar with the [OpenStreetMap](https://www.openstreetmap.org/)
 
 This tool depends on real OpenStreetMap data in order to generate the playable maps. In detail, *administrative* [Boundary](https://wiki.openstreetmap.org/wiki/Key:boundary) areas with specified [admin_levels](https://wiki.openstreetmap.org/wiki/Key:admin_level) are extracted from an input file and put together into a [Warzone Map](https://www.warzone.com/wiki/Map). After the map was created, it can be uploaded by the user via the 
 
-### Getting OSM data extracts
+### Downloading OSM data
 
 You can find and download an extract of your choice from [Geofabrik](https://download.geofabrik.de/), a server that provides regularily updated OSM data files for the whole planet. Please note that such files can reach sizes up to 58.5GB ([planet.osm.pbf](https://wiki.openstreetmap.org/wiki/Planet.osm)) depending on the scale of your extract.
 
-### Creating Warzone maps
+### Creating the map
 
 After you have downloaded the data extract, you should  https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#10_admin_level_values_for_specific_countries
 
@@ -131,13 +134,13 @@ For example, if you want to create a warzone map of [Germany](https://de.wikiped
 
 For more command line options, please refer to the section [Program Options](#program-options).
 
-### Uploading your map
+### Uploading the map
 
 In order to upload maps to the [Warzone Community Map Explorer](https://www.warzone.com/SinglePlayer/CommunityLevels), you will first need to create a [Warzone Account](https://www.warzone.com/SignUp2). Afterwards, you can upload the generated map svg [here](https://www.warzone.com/MultiPlayer?DesignMaps=1).
 
 **Note**: Currently, Warzone provides no API that allows you to upload maps programmatically.
 
-### Adding meta information
+### Adding metadata
 
 /todo
 
@@ -145,17 +148,17 @@ In order to upload maps to the [Warzone Community Map Explorer](https://www.warz
 
 The program takes multiple options that allow you to fine-tune the generated map output:
 
-| Parameter | Shorthand | Description | Type | Default | Annotation(s) |
-|-----------|-----------|-------------|------|---------|---------------|
-| --input || The input file path. Allowed file formats: .osm, .pbf | string | - ||
-| --output | -o | The output file path. Allowed file formats: .svg | string | <BUILD_DIR>/../out/<INPUT_NAME>.svg ||
-| --territory-level | -t | The admin_level of boundaries that will be used as territories. | int: [1; 12] | 6 ||
-| --bonus-level | -b | The admin_level of boundaries that will be used as bonus links. If set to 0, no bonus links will be created. | int: [1; 12] | 0 ||
-| --width || The output map width in pixels. If set to 0, the width will be determined automatically with the height. | int | 1000 ||
-| --height || The output map height in pixels. If set to 0, the height will be determined automatically with the width. | int | 0 ||
-| --epsilon || The minimum distance threshold between points for the Douglas-Peucker compression algorithm. If set to 0, no compression will be applied. | double | 0 ||
-| --cache || Enables caching of already read input files. | flag | false | This should not be enabled when working with large files (> 5GB). |
-| --verbose | -v | Enable verbose logging | flag | false ||
+| Parameter | Shorthand | Description | Type | Default |
+|-----------|-----------|-------------|------|---------|
+| --input || The input file path. Allowed file formats: `.osm`, `.pbf` | string | - |
+| --output | -o | The output file path. Allowed file formats: `.svg` | string | <BUILD_DIR>/../out/<INPUT_NAME>.svg |
+| --territory-level | -t | The admin_level of boundaries that will be used as territories. | int: [1; 12] | 6 |
+| --bonus-level | -b | The admin_level of boundaries that will be used as bonus links. If set to 0, no bonus links will be created. | int: [1; 12] | 0 |
+| --width || The output map width in pixels. If set to 0, the width will be determined automatically with the height. | int | 1000 |
+| --height || The output map height in pixels. If set to 0, the height will be determined automatically with the width. | int | 0 |
+| --epsilon || The minimum distance threshold between points for the Douglas-Peucker compression algorithm. If set to 0, no compression will be applied. | double | 0 |
+| --cache || Enables caching of already read input files. | flag | false |
+| --verbose | -v | Enable verbose logging | flag | false |
 
 ## Built with
 
