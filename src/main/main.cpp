@@ -39,29 +39,28 @@ int main(int argc, char* argv[])
     po::options_description desc("Program options");
     desc.add_options()
         ("input", po::value<fs::path>(&input),
-            "sets the input file path\nallowed file formats: .osm, .pbf")
+            "Sets the input file path.\nAllowed file formats: .osm, .pbf")
         ("output,o", po::value<fs::path>(&output),
-                "sets the target file path")
+                "Sets the target file path.\nAllowed file formats: .svg")
         ("territory-level,l", po::value<int32_t>(&territory_level)->default_value(6),
-            "sets which boundaries should be used as territories."
-            "\ninteger between 1 and 12.")
+            "Sets the admin_level of boundaries that will be be used as territories."
+            "\nInteger between 1 and 12.")
         ("bonus-level,b", po::value<int32_t>(&bonus_level)->default_value(0),
-            "sets which boundaries should be used as bonus links."
-            "\ninteger between 1 and 12. if set to 0, no bonus links will be created.")
+            "Sets the admin_level of boundaries that will be be used as bonus links."
+            "\nInteger between 1 and 12. If set to 0, no bonus links will be created.")
         ("width", po::value<int32_t>(&width)->default_value(1000),
-            "sets the generated map width in pixels."
-            "\nif set to 0, the width will be determined automatically.")
+            "Sets the generated map width in pixels."
+            "\nIf set to 0, the width will be determined automatically.")
         ("height", po::value<int32_t>(&height)->default_value(0),
-            "sets the generated map height in pixels."
-            "\nif set to 0, the height will be determined automatically.")
+            "Sets the generated map height in pixels."
+            "\nIf set to 0, the height will be determined automatically.")
         ("epsilon", po::value<double_t>(&epsilon)->default_value(0.0),
-                "sets the minimum distance threshold between nodes for the"
-                "douglas-peucker compression algorithm."
-                "\nif set to 0, no compression will be applied.")
+                "Sets the minimum distance threshold between points for the Douglas-Peucker compression algorithm."
+                "\nIf set to 0, no compression will be applied.")
         ("cache", po::bool_switch(&cache)->default_value(false),
-                "enables caching of pre-processed osm files for faster executions")
-        ("verbose,v", po::bool_switch(&verbose)->default_value(false), "sets the verbose flag which enables debug logs")
-        ("help,h", "shows this help message")
+                "Enables caching of processed input files for faster executions later on.")
+        ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Enables verbose logging.")
+        ("help,h", "Shows this help message.")
     ;
 
     // Parameter positions
