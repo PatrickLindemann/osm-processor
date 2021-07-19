@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
     po::options_description desc("Program options");
     desc.add_options()
         ("input", po::value<fs::path>(&input),
-            "sets the input file path\nallowed file formats: .pbf, .osm")
+            "sets the input file path\nallowed file formats: .osm, .pbf")
         ("output,o", po::value<fs::path>(&output),
                 "sets the target file path")
         ("territory-level,l", po::value<int32_t>(&territory_level)->default_value(6),
@@ -48,17 +48,17 @@ int main(int argc, char* argv[])
         ("bonus-level,b", po::value<int32_t>(&bonus_level)->default_value(0),
             "sets which boundaries should be used as bonus links."
             "\ninteger between 1 and 12. if set to 0, no bonus links will be created.")
-        ("width,w", po::value<int32_t>(&width)->default_value(1000),
+        ("width", po::value<int32_t>(&width)->default_value(1000),
             "sets the generated map width in pixels."
             "\nif set to 0, the width will be determined automatically.")
-        ("height,h", po::value<int32_t>(&height)->default_value(0),
+        ("height", po::value<int32_t>(&height)->default_value(0),
             "sets the generated map height in pixels."
             "\nif set to 0, the height will be determined automatically.")
-        ("epsilon,e", po::value<double_t>(&epsilon)->default_value(0.0),
+        ("epsilon", po::value<double_t>(&epsilon)->default_value(0.0),
                 "sets the minimum distance threshold between nodes for the"
                 "douglas-peucker compression algorithm."
                 "\nif set to 0, no compression will be applied.")
-        ("cache,c", po::bool_switch(&cache)->default_value(false),
+        ("cache", po::bool_switch(&cache)->default_value(false),
                 "enables caching of pre-processed osm files for faster executions")
         ("verbose,v", po::bool_switch(&verbose)->default_value(false), "sets the verbose flag which enables debug logs")
         ("help,h", "shows this help message")

@@ -1,3 +1,7 @@
+###############################################################################
+## project configuration ######################################################
+###############################################################################
+
 cmake_minimum_required(VERSION 3.5)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
@@ -6,10 +10,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 ###############################################################################
 
 set(CMAKE_CXX_STANDARD 17)
-project(osm-processor VERSION 1.0)
+project(warzone-osm-mapmaker VERSION 1.0)
 set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
-
-add_compile_options(-I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9)
 
 ###############################################################################
 ## file globbing ##############################################################
@@ -43,28 +45,50 @@ target_include_directories(${PROJECT_NAME} PUBLIC src/main)
 file(COPY ${data} DESTINATION resources)
 
 ###############################################################################
+## program options ############################################################
+###############################################################################
+
+# Compile options that will be added to the generated compile_commands.json file
+# in the build directory. This is needed to make code linting with clangd work
+# within visual studio code.
+add_compile_options(-I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9)
+
+###############################################################################
 ## dependencies ###############################################################
 ###############################################################################
 
+# BZIP2 is a freely available, patent free (see below), high-quality data
+# compressor.
+# https://www.sourceware.org/bzip2/
+# This is needed to work with compressed input and output (.bz2) files.
 find_package(BZip2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${BZIP2_LIBRARIES})
 
+# ZLIB is a massively spiffy yet delicately unobtrusive compression library.
+# https://zlib.net/
+# This is needed to work with protocol buffer format (.pbf) and other compressed
+# input and output files.
 find_package(ZLIB REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ZLIB_LIBRARIES})
 
+# EXPAT is a a stream-oriented XML parser library written in C.
+# https://libexpat.github.io/
+# This is needed to work with common OSM XML file formats such as .osm files.
 find_package(EXPAT REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EXPAT_LIBRARIES})
 
+# THREADS is needed for parallel file proccessing within libosmium.
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
 
-# Boost
+# BOOST provides free peer-reviewed portable C++ source libraries.
+# https://www.boost.org/
 find_package(Boost REQUIRED COMPONENTS program_options filesystem)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
-# This defines the variables OSMIUM_INCLUDE_DIRS that contains all library names
-# that we need to link into the program.
+# OSMIUM is a fast and flexible C++ library for working with OpenStreetMap data.
+# https://osmcode.org/libosmium/
 find_package(Osmium REQUIRED)
 include_directories(${OSMIUM_INCLUDE_DIRS})
 
