@@ -151,7 +151,7 @@ The program takes multiple options that allow you to fine-tune the generated map
 | Parameter | Shorthand | Description | Type | Default |
 |-----------|-----------|-------------|------|---------|
 | --input || The input file path. Allowed file formats: `.osm`, `.pbf` | string | - |
-| --output | -o | The output file path. Allowed file formats: `.svg` | string | <BUILD_DIR>/../out/<INPUT_NAME>.svg |
+| --output | -o | The output file path. Allowed file formats: `.svg` | string | out/<INPUT_NAME>.svg |
 | --territory-level | -t | The admin_level of boundaries that will be used as territories. | int: [1; 12] | 6 |
 | --bonus-level | -b | The admin_level of boundaries that will be used as bonus links. If set to 0, no bonus links will be created. | int: [1; 12] | 0 |
 | --width || The output map width in pixels. If set to 0, the width will be determined automatically with the height. | int | 1000 |
