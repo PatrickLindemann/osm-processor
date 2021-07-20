@@ -5,13 +5,10 @@
 cmake_minimum_required(VERSION 3.5)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-###############################################################################
-## project configuration ######################################################
-###############################################################################
-
-set(CMAKE_CXX_STANDARD 17)
 project(warzone-osm-mapmaker VERSION 1.0)
 set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
+
+set(CMAKE_CXX_STANDARD 17)
 
 ###############################################################################
 ## program options ############################################################
