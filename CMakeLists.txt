@@ -14,6 +14,15 @@ project(warzone-osm-mapmaker VERSION 1.0)
 set(AUTHOR "Patrick Lindemann <patrick.lindemann.99@gmail.com>")
 
 ###############################################################################
+## program options ############################################################
+###############################################################################
+
+# Compile options that will be added to the generated compile_commands.json file
+# in the build directory. This is needed to make code linting with clangd work
+# within visual studio code.
+add_compile_options(-I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9)
+
+###############################################################################
 ## file globbing ##############################################################
 ###############################################################################
 
@@ -43,15 +52,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC src/main)
 # This copies all resource files in the build directory.
 # We need this, because we want to work with paths relative to the executable.
 file(COPY ${data} DESTINATION resources)
-
-###############################################################################
-## program options ############################################################
-###############################################################################
-
-# Compile options that will be added to the generated compile_commands.json file
-# in the build directory. This is needed to make code linting with clangd work
-# within visual studio code.
-add_compile_options(-I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9)
 
 ###############################################################################
 ## dependencies ###############################################################
