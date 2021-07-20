@@ -38,6 +38,7 @@ namespace geometry
 
             Point() : x(T(0)), y(T(0)) {};
             Point(T x, T y) { this->x = x; this->y = y; };
+            Point(std::pair<T, T> xy) : x(xy.first), y(xy.second) {};
             Point(const Point& p) : x(p.x), y(p.y) {};
 
             ~Point() {};

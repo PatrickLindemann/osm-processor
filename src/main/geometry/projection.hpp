@@ -4,8 +4,6 @@
 #include <cmath>
 #include <utility>
 
-#include "geometry/model.hpp"
-
 namespace geometry
 {
 
@@ -41,13 +39,6 @@ namespace geometry
                 this->right = right;
                 set_diffs(left.first, left.second, right.first, right.second);
             }
-            Interval(model::Point<T>& left, model::Point<T>& right)
-            {
-                assert(left.x < right.x && left.y < right.y);
-                this->left = std::make_pair(left.x, left.y);
-                this->right = std::make_pair(right.x, right.y);
-                set_diffs(left.x, left.y, right.x, right.y);
-            }
 
             ~Interval() {};
 
@@ -69,20 +60,32 @@ namespace geometry
         {
         public:
 
-            explicit Projection(const Interval<T>& interval)
+            explicit Projection(const Interval<T>& source, const Interval<T>& target)
             {
-                this->interval = interval;
+                this->source = source;
+                this->target = target;
             }; 
 
             ~Projection() {};
 
             /* Methods */
 
-            // virtual std::pair<T, T> translate(T x, T y) const;
+            std::pair<T, T> translate(T x, T y) const
+            {
+                T tx = target.left.first + (target.diff_x / source.diff_x) * (x - source.left.first);
+                T ty = target.left.second + (target.diff_y / source.diff_y) * (y - source.left.second);
+                return std::make_pair(tx, ty);
+            }
+
+            std::pair<T, T> translate(std::pair<T, T> xy) const
+            {
+                return this->translate(xy.first, xy.second);
+            }
 
             /* Members */
 
-            Interval<T> interval;
+            Interval<T> source;
+            Interval<T> target;
 
         };
 
@@ -91,60 +94,45 @@ namespace geometry
         {
         public:
 
-            IdentityProjection(const Interval<T>& interval) : Projection<T>(interval) {};
+            IdentityProjection(const Interval<T>& source)
+            {
+                this->source = source;
+                this->target = source;
+            }
 
-            const std::pair<T, T> translate(T x, T y) const
+            std::pair<T, T> translate(T x, T y) const
             {
                 return std::make_pair(x, y);
             }
 
-        };
-
-        template <typename T = double_t>
-        class UnitIntervalProjection : public Projection<T>
-        {
-        public:
-
-            UnitIntervalProjection(const Interval<T>& interval) : Projection<T>(interval) {};
-
-            const std::pair<T, T> translate(T x, T y) const
+            std::pair<T, T> translate(std::pair<T, T> xy) const
             {
-                T tx = (x - this->interval.left.first) / this->interval.diff_x;
-                T ty = (y - this->interval.left.second) / this->interval.diff_y;
-                return std::make_pair(T(tx), T(ty));
+                return xy;
             }
 
         };
 
         template <typename T = double_t>
-        class NegativeUnitIntervalProjection : public Projection<T>
+        class UnitProjection : public Projection<T>
         {
         public:
 
-            NegativeUnitIntervalProjection(const Interval<T>& interval) : Projection<T>(interval) {};
+            UnitProjection(const Interval<T>& source)
+            : Projection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
 
-            const std::pair<T, T> translate(T x, T y) const
-            {
-                T tx = (x - this->interval.left.first) / this->interval.diff_x - 1;
-                T ty = (y - this->interval.left.second) / this->interval.diff_y - 1;
-                return std::make_pair(tx, ty);
-            }
+            using Projection<T>::translate;
 
         };
 
         template <typename T = double_t>
-        class SymmetricProjection : public Projection<T>
+        class SymmetricUnitProjection : public Projection<T>
         {
         public:
 
-            SymmetricProjection(const Interval<T>& interval) : Projection<T>(interval) {};
+            SymmetricUnitProjection(const Interval<T>& source)
+            : Projection<T>(source, Interval<T>{ -1.0, -1.0, 1.0, 1.0 }) {};
 
-            const std::pair<T, T> translate(T x, T y) const
-            {
-                T tx = 2 * ((x - this->interval.left.first) / this->interval.diff_x) - 1;
-                T ty = 2 * ((y - this->interval.left.second) / this->interval.diff_y) - 1;
-                return std::make_pair(tx, ty);
-            }
+            using Projection<T>::translate;
 
         };
 

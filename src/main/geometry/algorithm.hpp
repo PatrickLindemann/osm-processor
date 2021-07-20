@@ -131,7 +131,7 @@ namespace geometry
         {   
             std::numeric_limits<T> limits;
             T min_x = limits.max(), min_y = limits.max() ;
-            T max_x = limits.min(), max_y = limits.min();
+            T max_x = limits.lowest(), max_y = limits.lowest();
             for (const Point<T>& p : points)
             {
                 min_x = std::min(min_x, p.x);
@@ -164,7 +164,7 @@ namespace geometry
         inline Rectangle<T> bounds(const MultiPolygon<T>& multipolygon)
         {   
             std::numeric_limits<T> limits;
-            Rectangle<T> result = { limits.max(), limits.max(), limits.min(), limits.min() };
+            Rectangle<T> result = { limits.max(), limits.max(), limits.lowest(), limits.lowest() };
             for (const Polygon<T>& polygon : multipolygon.polygons)
             {
                 result.extend(bounds(polygon.outer));
