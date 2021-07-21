@@ -59,18 +59,10 @@ namespace mapmaker
         public:
 
             Map() {};
-            Map(const std::vector<Boundary>& territories)
-            {
-                for (const Boundary& t : territories)
-                    this->m_territories[t.id] = t;
-            };
-            Map(const std::vector<Boundary>& territories, const std::vector<Boundary>& bonus_links)
-            {
-                for (const Boundary& t : territories)
-                    this->m_territories[t.id] = t;
-                for (const Boundary& b : bonus_links)
-                    this->m_bonus_links[b.id] = b;
-            };
+            Map(const boundaries_type& territories)
+            : m_territories(territories) {};
+            Map(const boundaries_type& territories, const boundaries_type& bonus_links)
+            : m_territories(territories), m_bonus_links(bonus_links) {};
 
             /* Accessors */
 
@@ -82,6 +74,13 @@ namespace mapmaker
             const boundaries_type& bonus_links() const
             {
                 return m_bonus_links;
+            }
+
+            /* Misc */
+
+            const bool has_bonus_links() const
+            {
+                return !m_bonus_links.empty();
             }
 
         };

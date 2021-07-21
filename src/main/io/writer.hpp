@@ -69,19 +69,17 @@ namespace io
             size_t id = 0;
             for (const auto& [k, t] : map.territories())
             {
+                out << "<path "
+                    << "id=\"Territory_" << ++id << "\" "
+                    << "d=\"";
                 for (const auto& polygon : t.geometry.polygons)
                 {
-                    out << "<path "
-                        << "id=\"Territory_" << ++id << "\" "
-                        << "d=\"";
                     // Add outer points (clockwise)
                     out << "M ";
                     for (auto i = polygon.outer.begin(); i != polygon.outer.end(); ++i)
                     {   
                         // Project point to unit interval [0, 1]
                         geometry::model::Point p { projection.translate(i->x, i->y) };
-                        // Rotate point by -90 degrees
-                        p = { p.y, -p.x + 1 };
                         // Scale point to map bounds
                         p = { p.x * width, p.y * height };
                         // Write point to output
@@ -96,13 +94,11 @@ namespace io
                     {
                         for (const auto& inner : polygon.inners)
                         {
-                            out << "M ";
+                            out << " M ";
                             for (auto i = inner.rbegin(); i != inner.rend(); ++i)
                             {   
                                 // Project point to unit interval [0, 1]
                                 geometry::model::Point p { projection.translate(i->x, i->y) };
-                                // Rotate point by -90 degrees
-                                p = { p.y, -p.x + 1 };
                                 // Scale point to map bounds
                                 p = { p.x * width, p.y * height };
                                 // Write point to output
@@ -113,8 +109,8 @@ namespace io
                             out << "Z";
                         }
                     }
-                    out << "\"/>" << std::endl;
                 }
+                out << "\"/>" << std::endl;
             }
 
             // Add footers

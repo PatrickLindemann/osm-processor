@@ -180,7 +180,7 @@ namespace geometry
          */
         template <typename T>
         inline void compress(
-            const std::vector<Point<T>>& out,
+            std::vector<Point<T>>& out,
             const std::vector<Point<T>>& points,
             const double_t epsilon
         ) {
@@ -214,8 +214,8 @@ namespace geometry
                 point_list left_line{ points.begin(), points.begin() + index + 1 };
                 point_list right_line{ points.begin() + index, points.end() };
                 // Compress the lists recursively
-                compress_nodes(left_results, left_line, epsilon);
-                compress_nodes(right_results, right_line, epsilon);
+                compress(left_results, left_line, epsilon);
+                compress(right_results, right_line, epsilon);
                 // Build the result list
                 out.assign(left_results.begin(), left_results.end() - 1);
                 out.insert(out.end(), right_results.begin(), right_results.end());

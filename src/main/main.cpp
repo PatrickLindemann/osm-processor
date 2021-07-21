@@ -162,11 +162,10 @@ int main(int argc, char* argv[])
 
         // Build the map
         mapmaker::builder::Builder builder {};
-        builder.set_territories(boundaries, territory_level);
-        if (bonus_level > 0)
-            builder.set_bonus_links(boundaries, bonus_level);
-        if (epsilon > 0)
-            builder.set_epsilon(epsilon);
+        builder.set_boundaries(boundaries);
+        builder.set_territory_level(territory_level);
+        builder.set_bonus_level(bonus_level);
+        builder.set_epsilon(epsilon);
         mapmaker::model::Map map = builder.build();
 
         // Export map as svg
