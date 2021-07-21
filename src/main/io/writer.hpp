@@ -71,6 +71,7 @@ namespace io
             {
                 out << "<path "
                     << "id=\"Territory_" << ++id << "\" "
+                    << "style=\"fill: none; stroke:black; stroke-width: 1px;\" "
                     << "d=\"";
                 for (const auto& polygon : t.geometry.polygons)
                 {
