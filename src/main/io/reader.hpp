@@ -205,7 +205,6 @@ namespace io
         inline typename AreaHandler<T>::container_type read_osm(std::string file_path, bool cache)
         {   
             // TODO: check if cache and if file was already cached. If yes, parse it and return results
-
             const osmium::io::File input_file{ file_path };
 
             // Configuration for the multipolygon assembler. Here the default settings

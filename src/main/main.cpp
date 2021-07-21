@@ -19,6 +19,8 @@
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
+using Clock = std::chrono::high_resolution_clock;
+
 static bool verbose;
 
 int main(int argc, char* argv[])
@@ -157,10 +159,14 @@ int main(int argc, char* argv[])
     
     try
     {   
+        auto start = Clock::now();
+
+        std::cout << "Reading OSM data from " << input_path << "..." << std::endl;
         // Extract areas with the specified criteria from the input file
         std::vector<mapmaker::model::Boundary> boundaries = io::reader::read_osm(input_path.string(), cache);
+        std::cout << "Finished reading data." << std::endl;
 
-        // Build the map
+        // Prepare the map builder
         mapmaker::builder::Builder builder {};
         builder.set_width(width);
         builder.set_height(height);
@@ -168,10 +174,21 @@ int main(int argc, char* argv[])
         builder.set_territory_level(territory_level);
         builder.set_bonus_level(bonus_level);
         builder.set_epsilon(epsilon);
+
+        // Build the map
+        std::cout << "Building the map... " << std::endl;
         mapmaker::model::Map map = builder.build();
+        std::cout << "Finished build sucessfully." << std::endl;
 
         // Export map as svg
+        std::cout << "Exporting data to " << output_path << "..." << std::endl;
         io::writer::write_svg(output_path.string(), map);
+        std::cout << "Data export finished." << std::endl;
+
+        // Show times
+        auto end = Clock::now();
+        std::chrono::duration<double_t, std::milli> total_ms = end - start;
+        std::cout << "Total execution time: " << total_ms.count() << "ms." << std::endl;
 
     } catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;
