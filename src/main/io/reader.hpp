@@ -1,6 +1,9 @@
 #ifndef IO_READER_HPP
 #define IO_READER_HPP
 
+#include <cstring>
+#include <osmium/osm/area.hpp>
+#include <osmium/osm/object.hpp>
 #include <set>
 #include <string>
 #include <algorithm>
@@ -171,25 +174,26 @@ namespace io
         {    
             // Retrieve tag values
             osmium::object_id_type id = area.id();                
-            const char * name = area.tags()["name"];
-            const char * type = area.tags()["boundary"];
-            const char * admin_level = area.tags()["admin_level"];
-            const char * source = area.tags()["source"];
-            const char * wikidata = area.tags()["wikidata"];
+            const char * name = area.get_value_by_key("name", "");
+            const char * type = area.get_value_by_key("boundary", "");
+            const char * admin_level = area.get_value_by_key("admin_level", "0");
+            const char * source = area.get_value_by_key("source", "");;
+            const char * wikidata = area.get_value_by_key("wikidata", "");;
 
             // Create MultiPolygon
             geometry::model::MultiPolygon<T> multipolygon = m_factory.create_multipolygon(area);
 
             // Create new area and add it to the container
-            m_container.push_back({
+            mapmaker::model::Boundary boundary{
                 id,
                 name,
                 type,
-                admin_level ? std::stoi(admin_level) : 0,
+                std::stoi(admin_level),
                 multipolygon,
                 source,
                 wikidata
-            });
+            };
+            m_container.push_back(boundary);
         }
 
     };
