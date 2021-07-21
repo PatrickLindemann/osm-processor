@@ -162,6 +162,8 @@ int main(int argc, char* argv[])
 
         // Build the map
         mapmaker::builder::Builder builder {};
+        builder.set_width(width);
+        builder.set_height(height);
         builder.set_boundaries(boundaries);
         builder.set_territory_level(territory_level);
         builder.set_bonus_level(bonus_level);
@@ -169,7 +171,7 @@ int main(int argc, char* argv[])
         mapmaker::model::Map map = builder.build();
 
         // Export map as svg
-        io::writer::write_svg(output_path.string(), map, width, height);
+        io::writer::write_svg(output_path.string(), map);
 
     } catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;

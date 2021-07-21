@@ -11,8 +11,6 @@
 
 #include "mapmaker/model.hpp"
 #include "geometry/model.hpp"
-#include "geometry/projection.hpp"
-#include "geometry/algorithm.hpp"
 
 namespace io
 {
@@ -20,7 +18,7 @@ namespace io
     namespace writer
     {
 
-        const void write_svg(std::string file_path, mapmaker::model::Map& map, int32_t width, int32_t height)
+        const void write_svg(std::string file_path, mapmaker::model::Map& map)
         {
             std::ofstream out{ file_path, std::ios::trunc };
             out.precision(4);
@@ -30,39 +28,11 @@ namespace io
                 return; // TODO Error handling
             }
 
-            // Calculate map bounds geometry bounds
-            geometry::model::Rectangle map_bounds = { DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX };
-            for (const auto& [k, t] : map.territories())
-            {
-                map_bounds.extend(geometry::algorithm::bounds(t.geometry));
-            }
-            // TODO how to handle bonus links?
-
-            // Determine map width and size if set to auto
-            assert(!(width == 0 && height == 0));
-            if (width == 0)
-            {
-                width = map_bounds.width() / map_bounds.height() * height;
-            }
-            else if (height == 0)
-            {
-                height = map_bounds.height() / map_bounds.width() * width;
-            }
-
-            // Create projection to translate points to the unit interval
-            geometry::projection::Interval map_interval{
-                map_bounds.min.x,
-                map_bounds.min.y,
-                map_bounds.max.x,
-                map_bounds.max.y
-            };
-            geometry::projection::UnitProjection projection{ map_interval };
-
             // Add headers
             out << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
             << "id=\"my-svg\" "
-            << "width=\"" << width << "px\" "
-            << "height=\"" << height << "px\""
+            << "width=\"" << map.width() << "px\" "
+            << "height=\"" << map.height() << "px\""
             << ">" << std::endl;
 
             // Add paths
@@ -79,33 +49,22 @@ namespace io
                     out << "M ";
                     for (auto i = polygon.outer.begin(); i != polygon.outer.end(); ++i)
                     {   
-                        // Project point to unit interval [0, 1]
-                        geometry::model::Point p { projection.translate(i->x, i->y) };
-                        // Scale point to map bounds
-                        p = { p.x * width, p.y * height };
-                        // Write point to output
                         if (i == polygon.outer.begin() + 1)
                             out << "L ";
-                        out << p.x << " " << p.y << " ";
-                        // std::cout << "(" << i->x << "," << i->y << ") -> (" << p.x << "," << p.y << ")" << std::endl;
+                        out << i->x << " " << i->y << " ";
                     }
                     out << "Z";
-                    // Add inner points (counter-clockwise)
                     if (polygon.inners.size() > 0)
                     {
+                        // Add inner points (counter-clockwise)
                         for (const auto& inner : polygon.inners)
                         {
                             out << " M ";
                             for (auto i = inner.rbegin(); i != inner.rend(); ++i)
                             {   
-                                // Project point to unit interval [0, 1]
-                                geometry::model::Point p { projection.translate(i->x, i->y) };
-                                // Scale point to map bounds
-                                p = { p.x * width, p.y * height };
-                                // Write point to output
                                 if (i == inner.rbegin() + 1)
                                     out << "L ";
-                                out << p.x << " " << p.y << " ";
+                                out << i->x << " " << i->y << " ";
                             }
                             out << "Z";
                         }

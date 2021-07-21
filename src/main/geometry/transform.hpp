@@ -1,5 +1,5 @@
-#ifndef MAPMAKER_PROJECTION_HPP
-#define MAPMAKER_PROJECTION_HPP
+#ifndef MAPMAKER_TRANSFORM_HPP
+#define MAPMAKER_TRANSFORM_HPP
 
 #include <cmath>
 #include <utility>
@@ -7,7 +7,7 @@
 namespace geometry
 {
 
-    namespace projection
+    namespace transform
     {
 
         /* Interval */
@@ -70,16 +70,16 @@ namespace geometry
 
             /* Methods */
 
-            std::pair<T, T> translate(T x, T y) const
+            std::pair<T, T> project(T x, T y) const
             {
                 T tx = target.left.first + (target.diff_x / source.diff_x) * (x - source.left.first);
                 T ty = target.left.second + (target.diff_y / source.diff_y) * (y - source.left.second);
                 return std::make_pair(tx, ty);
             }
 
-            std::pair<T, T> translate(std::pair<T, T> xy) const
+            std::pair<T, T> project(std::pair<T, T> xy) const
             {
-                return this->translate(xy.first, xy.second);
+                return this->project(xy.first, xy.second);
             }
 
             /* Members */
@@ -100,12 +100,12 @@ namespace geometry
                 this->target = source;
             }
 
-            std::pair<T, T> translate(T x, T y) const
+            std::pair<T, T> project(T x, T y) const
             {
                 return std::make_pair(x, y);
             }
 
-            std::pair<T, T> translate(std::pair<T, T> xy) const
+            std::pair<T, T> project(std::pair<T, T> xy) const
             {
                 return xy;
             }
@@ -120,7 +120,7 @@ namespace geometry
             UnitProjection(const Interval<T>& source)
             : Projection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
 
-            using Projection<T>::translate;
+            using Projection<T>::project;
 
         };
 
@@ -132,7 +132,32 @@ namespace geometry
             SymmetricUnitProjection(const Interval<T>& source)
             : Projection<T>(source, Interval<T>{ -1.0, -1.0, 1.0, 1.0 }) {};
 
-            using Projection<T>::translate;
+            using Projection<T>::project;
+
+        };
+
+        /**
+         * https://en.wikipedia.org/wiki/Web_Mercator_projection
+         */
+        template <typename T = double_t>
+        class WebMercatorProjection : public Projection<T>
+        {
+        public:
+
+            WebMercatorProjection(const Interval<T>& source)
+            : Projection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
+
+            std::pair<T, T> project(T x, T y) const
+            {
+                T tx = std::floor(1.0 / (2 * M_PI) * std::exp2(6) * (x + M_PI));
+                T ty = std::floor(1.0 / (2 * M_PI) * std::exp2(6) * (M_PI - std::log(std::tan(M_PI / 4 + y / 2))));
+                return std::make_pair(x, y);
+            }
+
+            std::pair<T, T> project(std::pair<T, T> xy) const
+            {
+                return project(xy.first, xy.second);
+            }   
 
         };
 

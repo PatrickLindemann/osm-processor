@@ -52,6 +52,8 @@ namespace mapmaker
 
         private:
 
+            int32_t m_width;
+            int32_t m_height;
             boundaries_type m_territories;
             boundaries_type m_bonus_links;
             relations_type m_relations;
@@ -59,28 +61,38 @@ namespace mapmaker
         public:
 
             Map() {};
-            Map(const boundaries_type& territories)
-            : m_territories(territories) {};
-            Map(const boundaries_type& territories, const boundaries_type& bonus_links)
-            : m_territories(territories), m_bonus_links(bonus_links) {};
+            Map(int32_t width, int32_t height, const boundaries_type& territories)
+            : m_width(width), m_height(height), m_territories(territories) {};
+            Map(int32_t width, int32_t height, const boundaries_type& territories, const boundaries_type& bonus_links)
+            : m_width(width), m_height(height), m_territories(territories), m_bonus_links(bonus_links) {};
 
             /* Accessors */
 
+            const int32_t width() const
+            {
+                return this->m_width;
+            }
+            
+            const int32_t height() const
+            {
+                return this->m_height;
+            }
+
             const boundaries_type& territories() const
             {
-                return m_territories;
+                return this->m_territories;
             }
 
             const boundaries_type& bonus_links() const
             {
-                return m_bonus_links;
+                return this->m_bonus_links;
             }
 
             /* Misc */
 
             const bool has_bonus_links() const
             {
-                return !m_bonus_links.empty();
+                return !this->m_bonus_links.empty();
             }
 
         };
