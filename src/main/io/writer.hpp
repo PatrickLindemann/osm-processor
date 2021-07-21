@@ -88,7 +88,7 @@ namespace io
                         if (i == polygon.outer.begin() + 1)
                             out << "L ";
                         out << p.x << " " << p.y << " ";
-                        std::cout << "(" << i->x << "," << i->y << ") -> (" << p.x << "," << p.y << ")" << std::endl;
+                        // std::cout << "(" << i->x << "," << i->y << ") -> (" << p.x << "," << p.y << ")" << std::endl;
                     }
                     out << "Z";
                     // Add inner points (counter-clockwise)
