@@ -55,18 +55,18 @@ sudo apt-get install -y -V \
 
 #### Libosmium
 
-The second step is installing [libosmium](https://osmcode.org/libosmium/) and all its needed dependencies that allow the program to work with OSM files. Like before, these can be installed at once with this command:
+The second step is installing [libosmium](https://osmcode.org/libosmium/) and all its needed dependencies that allow the program to work with OSM files. You can install everything at once with this command:
 
 ```
 sudo apt-get install -y -V \
+    libosmium2-dev \
     libbz2-dev \
     libexpat1-dev \
     liblz4-dev \
     libproj-dev \
     libsparsehash-dev \
     libutfcpp-dev \
-    zlib1g-dev \
-    libosmium2-dev
+    zlib1g-dev
 ```
 
 #### Osmium-Tool (Optional)
