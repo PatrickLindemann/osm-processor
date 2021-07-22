@@ -49,7 +49,8 @@ sudo apt-get install -y -V \
   cmake \
   doxygen \
   graphviz \
-  libboost-dev
+  libboost-dev \
+  libboost-filesystem-dev
 ```
 
 #### Libosmium
@@ -65,6 +66,7 @@ sudo apt-get install -y -V \
     libsparsehash-dev \
     libutfcpp-dev \
     zlib1g-dev \
+    libosmium2-dev
 ```
 
 #### Osmium-Tool (Optional)
