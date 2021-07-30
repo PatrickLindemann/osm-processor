@@ -1,38 +1,40 @@
 #ifndef MAPMAKER_BUILDER_HPP
 #define MAPMAKER_BUILDER_HPP
 
+#include <vector>
 #include <cassert>
 #include <initializer_list>
-#include <vector>
+#include <iostream>
 
 #include "geometry/model.hpp"
-#include "mapmaker/model.hpp"
 #include "geometry/algorithm.hpp"
 #include "geometry/transform.hpp"
+#include "geometry/util.hpp"
+#include "mapmaker/model.hpp"
 
 namespace mapmaker
 {
 
     namespace builder
     {
-        
+
         class Builder
         {
         public:
 
-            typedef geometry::model::Point<double_t> point_type;
-            typedef std::unordered_map<int64_t, model::Boundary> boundaries_type;
+            typedef geometry::model::Point<double_t> point_t;
+            typedef std::unordered_map<int64_t, model::Boundary> boundaries_t;
 
         private:
             
             int32_t m_width;
             int32_t m_height;
-            boundaries_type m_boundaries;
+            boundaries_t m_boundaries;
             int32_t m_territory_level;
             int32_t m_bonus_level;
             double_t m_epsilon;
 
-            void filter(boundaries_type& boundaries, int32_t admin_level) const
+            void filter(boundaries_t& boundaries, int32_t admin_level) const
             {
                 for(auto it = boundaries.begin(); it != boundaries.end();)
                 {
@@ -47,7 +49,7 @@ namespace mapmaker
                 }
             }
 
-            void compress(boundaries_type& boundaries, double_t epsilon) const
+            void compress(boundaries_t& boundaries, double_t epsilon) const
             {
                 if (epsilon <= 0.0)
                     return;
@@ -66,7 +68,36 @@ namespace mapmaker
                 }
             }
 
-            void project(boundaries_type& boundaries, geometry::transform::Projection<double_t> projection) const
+            void convert_to_radians(boundaries_t& boundaries) const
+            {
+                for (auto& [k, v] : boundaries)
+                {
+                    for (auto& polygon : v.geometry.polygons)
+                    {
+                        // Convert outer ring
+                        for (auto& point : polygon.outer)
+                        {
+                            point = point_t{
+                                geometry::util::radians(point.x),
+                                geometry::util::radians(point.y)
+                            };
+                        }
+                        // Convert inner rings
+                        for (auto& inner : polygon.inners)
+                        {
+                            for (auto& point : inner)
+                            {
+                                point = point_t{
+                                    geometry::util::radians(point.x),
+                                    geometry::util::radians(point.y)
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            void project(boundaries_t& boundaries, geometry::transform::Projection<double_t>& projection) const
             {
                 for (auto& [k, v] : boundaries)
                 {
@@ -75,18 +106,39 @@ namespace mapmaker
                         // Project outer ring
                         for (auto& point : polygon.outer)
                         {
-                            point = { projection.project(point.x, point.y) };
-                            point.x *= m_width;
-                            point.y *= m_height;
+                            point = projection.project(point);
                         }
                         // Project inner rings
                         for (auto& inner : polygon.inners)
                         {
                             for (auto& point : inner)
                             {
-                                point = { projection.project(point.x, point.y) };
-                                point.x *= m_width;
-                                point.y *= m_height;
+                                point = projection.project(point);
+                            }
+                        }
+                    }
+                }
+            }
+
+            void scale(boundaries_t& boundaries, int32_t width, int32_t height) const
+            {
+                for (auto& [k, v] : boundaries)
+                {
+                    for (auto& polygon : v.geometry.polygons)
+                    {
+                        // Scale outer ring
+                        for (auto& point : polygon.outer)
+                        {
+                            point.x *= width;
+                            point.y *= height;
+                        }
+                        // Scale inner rings
+                        for (auto& inner : polygon.inners)
+                        {
+                            for (auto& point : inner)
+                            {
+                                point.x *= width;
+                                point.y *= height;
                             }
                         }
                     }
@@ -140,11 +192,11 @@ namespace mapmaker
             model::Map build()
             {
                 // Filter territory boundaries
-                boundaries_type territories(m_boundaries);
+                boundaries_t territories(m_boundaries);
                 filter(territories, m_territory_level);
 
                 // Filter bonus link boundaries
-                boundaries_type bonus_links(m_boundaries);
+                boundaries_t bonus_links(m_boundaries);
                 filter(bonus_links, m_bonus_level);
                 
                 // Compress territories and bonus links
@@ -163,32 +215,45 @@ namespace mapmaker
                 }
 
                 // Set dimensions
+                int32_t width, height;
                 if (m_width == 0)
                 {
-                    m_width = map_bounds.width() / map_bounds.height() * m_height;
+                    width = map_bounds.width() / map_bounds.height() * m_height;
+                    height = m_height;
                 }
                 else
                 {
-                    m_height = map_bounds.height() / map_bounds.width() * m_width;
+                    width = m_width;
+                    height = map_bounds.height() / map_bounds.width() * m_width;
                 }
+                            
+                // Prepare the map projection
+                // geometry::transform::IdentityProjection map_projection{};
+                geometry::transform::MercatorProjection map_projection{};
+                // geometry::transform::CylindricalEqualAreaProjection map_projection{};
 
-                // Create the map bounds interval for the projection
-                geometry::transform::Interval map_interval{
-                    map_bounds.min.x,
-                    map_bounds.min.y,
-                    map_bounds.max.x,
-                    map_bounds.max.y
-                };            
+                // Prepare the scaling projection
+                point_t min = map_projection.project(point_t{
+                    geometry::util::radians(map_bounds.min.x),
+                    geometry::util::radians(map_bounds.min.y)
+                });
+                point_t max = map_projection.project(point_t{
+                    geometry::util::radians(map_bounds.max.x),
+                    geometry::util::radians(map_bounds.max.y)
+                });
+                geometry::transform::Interval map_interval{ min, max };
+                geometry::transform::UnitProjection unit_projection{ map_interval };
+
+                // Apply the projections 
+                convert_to_radians(territories);
+                project(territories, map_projection);
+                project(territories, unit_projection);
+                scale(territories, width, height);
                 
-                // Project the territory and bonus link points
-                geometry::transform::WebMercatorProjection projection{ map_interval };
-                project(territories, projection);
-                project(bonus_links, projection);
-
                 // TODO: Relationships, center points, polygon checks, troop circle position, etc.
 
                 // Create and return the map
-                return model::Map{ m_width, m_height, territories, bonus_links };
+                return model::Map{ width, height, territories, bonus_links };
             }
             
         };

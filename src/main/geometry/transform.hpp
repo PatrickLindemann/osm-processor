@@ -4,47 +4,55 @@
 #include <cmath>
 #include <utility>
 
+#include "geometry/model.hpp"
+#include "geometry/util.hpp"
+
 namespace geometry
 {
 
     namespace transform
     {
 
+        /* Helper functions */
+        template <typename T>
+        T normalize(T value, T min, T max)
+        {
+            if (value < min) value += std::abs(max - min);
+            else if (value > max) value -= std::abs(max - min);
+            return value;
+        }
+
         /* Interval */
 
         template <typename T = double_t>
         class Interval
         {
-        private:
-
-            void set_diffs(T min_x, T min_y, T max_x, T max_y)
-            {
-                this->diff_x = max_x - min_x;
-                this->diff_y = max_y - min_y;
-            }
-
         public:
+
+            typedef model::Point<T> point_t;
 
             Interval() {};
             Interval(T left_x, T left_y, T right_x, T right_y)
             : left(left_x, left_y), right(right_x, right_y)
             {
                 assert(left_x < right_x && left_y < right_y);
-                set_diffs(left_x, left_y, right_x, right_y);
+                this->diff_x = right_x - left_x;
+                this->diff_y = right_y - left_y;
             };
-            Interval(std::pair<T, T>& left, std::pair<T, T> right)
+            Interval(point_t& left, point_t right)
             {
-                assert(left.first < right.first && left.second < right.second);
+                assert(left.x < right.x && left.y < right.y);
                 this->left = left;
                 this->right = right;
-                set_diffs(left.first, left.second, right.first, right.second);
-            }
+                this->diff_x = right.x - left.x;
+                this->diff_y = right.y - left.y;
+            } 
 
             ~Interval() {};
 
             /* Members */
 
-            std::pair<T, T> left, right;
+            point_t left, right;
 
             T diff_x, diff_y;
 
@@ -60,104 +68,131 @@ namespace geometry
         {
         public:
 
-            explicit Projection(const Interval<T>& source, const Interval<T>& target)
+            typedef model::Point<T> point_t;
+
+            virtual point_t project(const point_t& point) const = 0;
+
+        };
+
+        template <typename T = double_t>
+        class IdentityProjection : virtual public Projection<T>
+        {
+        public:
+
+            typedef model::Point<T> point_t;
+
+            point_t project(const point_t& point) const
+            {
+                return point;
+            }
+
+        };
+
+        template <typename T = double_t>
+        class GenericProjection : virtual public Projection<T>
+        {
+        public:
+
+            typedef model::Point<T> point_t;
+
+            explicit GenericProjection(const Interval<T>& source, const Interval<T>& target)
             {
                 this->source = source;
                 this->target = target;
             }; 
 
-            ~Projection() {};
+            ~GenericProjection() {};
 
-            /* Methods */
-
-            std::pair<T, T> project(T x, T y) const
+            point_t project(const point_t& point) const
             {
-                T tx = target.left.first + (target.diff_x / source.diff_x) * (x - source.left.first);
-                T ty = target.left.second + (target.diff_y / source.diff_y) * (y - source.left.second);
-                return std::make_pair(tx, ty);
+                T tx = target.left.x + (target.diff_x / source.diff_x) * (point.x - source.left.x);
+                T ty = target.left.y + (target.diff_y / source.diff_y) * (point.y - source.left.y);
+                return point_t{ tx, ty };
             }
-
-            std::pair<T, T> project(std::pair<T, T> xy) const
-            {
-                return this->project(xy.first, xy.second);
-            }
-
-            /* Members */
 
             Interval<T> source;
             Interval<T> target;
-
         };
 
         template <typename T = double_t>
-        class IdentityProjection : public Projection<T>
-        {
-        public:
-
-            IdentityProjection(const Interval<T>& source)
-            {
-                this->source = source;
-                this->target = source;
-            }
-
-            std::pair<T, T> project(T x, T y) const
-            {
-                return std::make_pair(x, y);
-            }
-
-            std::pair<T, T> project(std::pair<T, T> xy) const
-            {
-                return xy;
-            }
-
-        };
-
-        template <typename T = double_t>
-        class UnitProjection : public Projection<T>
+        class UnitProjection : public GenericProjection<T>
         {
         public:
 
             UnitProjection(const Interval<T>& source)
-            : Projection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
+            : GenericProjection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
 
-            using Projection<T>::project;
+            using GenericProjection<T>::project;
 
         };
 
         template <typename T = double_t>
-        class SymmetricUnitProjection : public Projection<T>
+        class SymmetricUnitProjection : public GenericProjection<T>
         {
         public:
 
             SymmetricUnitProjection(const Interval<T>& source)
-            : Projection<T>(source, Interval<T>{ -1.0, -1.0, 1.0, 1.0 }) {};
+            : GenericProjection<T>(source, Interval<T>{ -1.0, -1.0, 1.0, 1.0 }) {};
 
-            using Projection<T>::project;
+            using GenericProjection<T>::project;
 
         };
 
-        /**
-         * https://en.wikipedia.org/wiki/Web_Mercator_projection
-         */
         template <typename T = double_t>
-        class WebMercatorProjection : public Projection<T>
+        class MercatorProjection : virtual public Projection<T>
         {
         public:
 
-            WebMercatorProjection(const Interval<T>& source)
-            : Projection<T>(source, Interval<T>{ 0.0, 0.0, 1.0, 1.0 }) {};
+            typedef model::Point<T> point_t;
 
-            std::pair<T, T> project(T x, T y) const
+            MercatorProjection(T central_meridian = T(0))
             {
-                T tx = std::floor(1.0 / (2 * M_PI) * std::exp2(6) * (x + M_PI));
-                T ty = std::floor(1.0 / (2 * M_PI) * std::exp2(6) * (M_PI - std::log(std::tan(M_PI / 4 + y / 2))));
-                return std::make_pair(x, y);
+                this->central_meridian = central_meridian;
             }
 
-            std::pair<T, T> project(std::pair<T, T> xy) const
+            /* Methods */
+
+            point_t project(const point_t& point) const
+            {   
+                // Project x and y values
+                T tx = normalize(point.x - this->central_meridian, -M_PI, M_PI); // Shift x by the central meridian if specified
+                T ty = std::log(std::tan(util::QUARTER_PI + point.y / 2));
+                return point_t{ tx, ty };
+            }
+
+            /* Members */
+
+            T central_meridian;
+
+        };
+
+        template <typename T = double_t>
+        class CylindricalEqualAreaProjection : virtual public Projection<T>
+        {
+        public:
+
+            typedef model::Point<T> point_t;
+
+            CylindricalEqualAreaProjection(T central_meridian = T(0), T standard_parallel = T(0))
             {
-                return project(xy.first, xy.second);
-            }   
+                this->central_meridian = central_meridian;
+                this->standard_parallel = standard_parallel;
+            }
+
+            /* Methods */
+
+            point_t project(const point_t& point) const
+            {   
+                // Project x and y values
+                double_t cos_p = std::cos(this->standard_parallel);
+                T tx = normalize(point.x - this->central_meridian, -M_PI, M_PI) * cos_p; // Shift x by the central meridian if specified
+                T ty = std::sin(point.y) / cos_p;
+                return point_t{ tx, ty };
+            }
+
+            /* Members */
+
+            T central_meridian, standard_parallel;
 
         };
 

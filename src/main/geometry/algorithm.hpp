@@ -1,10 +1,10 @@
 #ifndef GEOMETRY_ALGORITHM_HPP
 #define GEOMETRY_ALGORITHM_HPP
 
-#include <cfloat>
-#include <initializer_list>
 #include <mutex>
 #include <vector>
+#include <cfloat>
+#include <initializer_list>
 
 #include "geometry/model.hpp"
 #include "mapmaker/model.hpp"
@@ -18,7 +18,7 @@ namespace geometry
         using namespace model;
 
         /**
-         * Calculae the dot product of two points
+         * Calculate the dot product of two points
          * 
          * @param p The first point
          * @param q The second point
