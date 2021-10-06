@@ -1,16 +1,24 @@
-#ifndef MAPMAKER_BUILDER_HPP
-#define MAPMAKER_BUILDER_HPP
+#pragma once
 
+#include <cfloat>
 #include <vector>
-#include <cassert>
-#include <initializer_list>
-#include <iostream>
 
-#include "geometry/model.hpp"
-#include "geometry/algorithm.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/util.hpp"
-#include "mapmaker/model.hpp"
+#include "model/geometry/multipolygon.hpp"
+#include "model/geometry/polygon.hpp"
+#include "model/map/boundary.hpp"
+#include "model/map/map.hpp"
+#include "model/geometry/point.hpp"
+#include "model/geometry/rectangle.hpp"
+#include "model/memory/buffer.hpp"
+#include "model/graph/undirected_graph.hpp"
+#include "mapmaker/projector.hpp"
+#include "mapmaker/algorithm.hpp"
+#include "model/memory/ring.hpp"
+#include "model/memory/node.hpp"
+#include "model/memory/area.hpp"
+#include "model/memory/buffer.hpp"
+
+using namespace model;
 
 namespace mapmaker
 {
@@ -18,248 +26,198 @@ namespace mapmaker
     namespace builder
     {
 
+        /* Definitions */
+
+        using NodeBuffer  = memory::Buffer<memory::Node>;
+        using AreaBuffer  = memory::Buffer<memory::Area>;
+        using Graph       = graph::UndirectedGraph;
+
+        /**
+         * 
+         */
+        struct Config
+        {
+            int width;
+            int height;
+            int territory_level;
+            std::vector<int> bonus_levels;
+        };
+
+        /**
+         * 
+         */
         class Builder
         {
         public:
 
-            typedef geometry::model::Point<double_t> point_t;
-            typedef std::unordered_map<int64_t, model::Boundary> boundaries_t;
+            /* Types */
 
-        private:
+            using point_type        = geometry::Point<double>;
+            using rectangle_type    = geometry::Rectangle<double>;
+            using polygon_type      = geometry::Polygon<double>;
+            using multipolygon_type = geometry::MultiPolygon<double>;
+
+        protected:
             
-            int32_t m_width;
-            int32_t m_height;
-            boundaries_t m_boundaries;
-            int32_t m_territory_level;
-            int32_t m_bonus_level;
-            double_t m_epsilon;
+            /* Members */
 
-            void filter(boundaries_t& boundaries, int32_t admin_level) const
-            {
-                for(auto it = boundaries.begin(); it != boundaries.end();)
-                {
-                    if (it->second.level != admin_level)
-                    {
-                        boundaries.erase(it++);
-                    }
-                    else
-                    {
-                        ++it;
-                    }
-                }
-            }
-
-            void compress(boundaries_t& boundaries, double_t epsilon) const
-            {
-                if (epsilon <= 0.0)
-                    return;
-                for (auto& [k, v] : boundaries)
-                {
-                    for (auto& polygon : v.geometry.polygons)
-                    {
-                        // Compress outer ring
-                        geometry::algorithm::compress(polygon.outer, polygon.outer, epsilon);
-                        // Compress inner rings
-                        for (auto& inner : polygon.inners)
-                        {
-                            geometry::algorithm::compress(inner, inner, epsilon);
-                        }
-                    }
-                }
-            }
-
-            void convert_to_radians(boundaries_t& boundaries) const
-            {
-                for (auto& [k, v] : boundaries)
-                {
-                    for (auto& polygon : v.geometry.polygons)
-                    {
-                        // Convert outer ring
-                        for (auto& point : polygon.outer)
-                        {
-                            point = point_t{
-                                geometry::util::radians(point.x),
-                                geometry::util::radians(point.y)
-                            };
-                        }
-                        // Convert inner rings
-                        for (auto& inner : polygon.inners)
-                        {
-                            for (auto& point : inner)
-                            {
-                                point = point_t{
-                                    geometry::util::radians(point.x),
-                                    geometry::util::radians(point.y)
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-
-            void project(boundaries_t& boundaries, geometry::transform::Projection<double_t>& projection) const
-            {
-                for (auto& [k, v] : boundaries)
-                {
-                    for (auto& polygon : v.geometry.polygons)
-                    {
-                        // Project outer ring
-                        for (auto& point : polygon.outer)
-                        {
-                            point = projection.project(point);
-                        }
-                        // Project inner rings
-                        for (auto& inner : polygon.inners)
-                        {
-                            for (auto& point : inner)
-                            {
-                                point = projection.project(point);
-                            }
-                        }
-                    }
-                }
-            }
-
-            void scale(boundaries_t& boundaries, int32_t width, int32_t height) const
-            {
-                for (auto& [k, v] : boundaries)
-                {
-                    for (auto& polygon : v.geometry.polygons)
-                    {
-                        // Scale outer ring
-                        for (auto& point : polygon.outer)
-                        {
-                            point.x *= width;
-                            point.y *= height;
-                        }
-                        // Scale inner rings
-                        for (auto& inner : polygon.inners)
-                        {
-                            for (auto& point : inner)
-                            {
-                                point.x *= width;
-                                point.y *= height;
-                            }
-                        }
-                    }
-                }
-            }
-
-        public:
-
-            Builder() {};
-
-            ~Builder() {};
-
-            /* Setters */
-
-            void set_territory_level(int32_t level)
-            {
-                m_territory_level = level;
-            }
-
-            void set_bonus_level(int32_t level)
-            {
-                m_bonus_level = level;
-            }
-
-            void set_boundaries(std::vector<model::Boundary>& boundaries)
-            {
-                m_boundaries = {};
-                for (const model::Boundary& b : boundaries)
-                {
-                    m_boundaries[b.id] = b;
-                }
-            }
-
-            void set_width(int32_t width)
-            {
-                m_width = width;
-            }
-
-            void set_height(int32_t height)
-            {
-                m_height = height;
-            }
-
-            void set_epsilon(double_t epsilon)
-            {
-                m_epsilon = epsilon;
-            }
+            NodeBuffer m_node_buffer;
+            AreaBuffer m_area_buffer;
+            Graph m_graph;
+            Config m_config;
 
             /* Methods */
 
-            model::Map build()
+            /**
+             * 
+             */
+            void apply(const projector::Projector<double>& projector)
             {
-                // Filter territory boundaries
-                boundaries_t territories(m_boundaries);
-                filter(territories, m_territory_level);
-
-                // Filter bonus link boundaries
-                boundaries_t bonus_links(m_boundaries);
-                filter(bonus_links, m_bonus_level);
-                
-                // Compress territories and bonus links
-                compress(territories, m_epsilon);
-                compress(bonus_links, m_epsilon);
-
-                // Calculate map boundaries
-                geometry::model::Rectangle<double_t> map_bounds = { DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX };
-                for (const auto& [k, v] : territories)
+                for (auto& node : m_node_buffer)
                 {
-                    map_bounds.extend(geometry::algorithm::bounds(v.geometry));
+                    node.point() = projector.project(node.lon(), node.lat());
                 }
-                for (const auto& [k, v] : bonus_links)
-                {
-                    map_bounds.extend(geometry::algorithm::bounds(v.geometry));
-                }
-
-                // Set dimensions
-                int32_t width, height;
-                if (m_width == 0)
-                {
-                    width = map_bounds.width() / map_bounds.height() * m_height;
-                    height = m_height;
-                }
-                else
-                {
-                    width = m_width;
-                    height = map_bounds.height() / map_bounds.width() * m_width;
-                }
-                            
-                // Prepare the map projection
-                // geometry::transform::IdentityProjection map_projection{};
-                geometry::transform::MercatorProjection map_projection{};
-                // geometry::transform::CylindricalEqualAreaProjection map_projection{};
-
-                // Prepare the scaling projection
-                point_t min = map_projection.project(point_t{
-                    geometry::util::radians(map_bounds.min.x),
-                    geometry::util::radians(map_bounds.min.y)
-                });
-                point_t max = map_projection.project(point_t{
-                    geometry::util::radians(map_bounds.max.x),
-                    geometry::util::radians(map_bounds.max.y)
-                });
-                geometry::transform::Interval map_interval{ min, max };
-                geometry::transform::UnitProjection unit_projection{ map_interval };
-
-                // Apply the projections 
-                convert_to_radians(territories);
-                project(territories, map_projection);
-                project(territories, unit_projection);
-                scale(territories, width, height);
-                
-                // TODO: Relationships, center points, polygon checks, troop circle position, etc.
-
-                // Create and return the map
-                return model::Map{ width, height, territories, bonus_links };
             }
+
+            const geometry::Ring<double> build_ring(const memory::Ring& ring) const
+            {
+                geometry::Ring<double> result;
+                for (const auto& node_ref : ring)
+                {
+                    memory::Node node = m_node_buffer.get(node_ref);
+                    result.push_back(node.point());
+                }
+                return result;
+            } 
+
+        public:
+
+            /* Constructor */
+
+            Builder(
+                AreaBuffer& area_buffer,
+                NodeBuffer& node_buffer,
+                graph::UndirectedGraph& graph,
+                Config& config
+            ) : m_area_buffer(area_buffer),
+                m_node_buffer(node_buffer),
+                m_graph(graph),
+                m_config(config)
+            {
+
+            };
+
+            /**
+             * 
+             */
+            rectangle_type bounds() const
+            {
+                point_type min{ -DBL_MAX, -DBL_MAX };
+                point_type max{  DBL_MAX,  DBL_MAX };
+                rectangle_type result{ max, min };
+                for (const auto& node : m_node_buffer)
+                {
+                    result.extend(node.point());
+                }
+                return result;
+            }
+
+            /**
+             * 
+             */
+            map::Map build()
+            {
+                // Convert the map coordinates to radians
+                apply(mapmaker::projector::RadianProjector<double>{});
+
+                // Apply the MercatorProjection
+                apply(mapmaker::projector::MercatorProjector<double>{});
+
+                // Calculate the map bounds
+                rectangle_type b = bounds();
+
+                // Check if a dimension is set to auto and calculate its value
+                // depending on the map bounds
+                int width = m_config.width;
+                int height = m_config.height;
+                if (width == 0 || height == 0)
+                {
+                    if (width == 0)
+                    {
+                        width = b.width() / b.height() * height;
+                    }
+                    else
+                    {
+                        height = b.height() / b.width() * width;
+                    }
+                }
+
+                // Scale the map according to the dimensions
+                apply(mapmaker::projector::UnitProjector<double>{
+                    { b.min.x, b.max.x }, {b.min.y, b.max.y }
+                });
+                apply(mapmaker::projector::IntervalProjector<double>{
+                    { 0.0, 1.0 }, { 0.0, 1.0 }, { 0.0, width }, { 0.0, height }
+                });
+
+                // 1. Calculate neighbors
+                // map<node_id, vector<territory_id>> connected_nodes;
+                // For each node in node_buffer:
+                // if (degree(node) >= 3)
+                // connected_nodes[node.id()] = {}
+                // Alternativ über alle areas? Muss man ja später sowieso
+
+                // 2. Assemble boundaries
+
+                // 1. Assemble Boundaries (territories & bonus levels)
+                // 2. Create relationships from graph -> Two 
+                // 3. 
+                std::vector<map::Boundary> boundaries;
+
+                for (const auto& area : m_area_buffer)
+                {
+                    // Assemble geometry
+                    multipolygon_type geometry;
+                    for (const auto& outer_ring : area.outer_rings())
+                    {
+                        polygon_type polygon;
+                        polygon.outer = build_ring(outer_ring);
+                        for (const auto& inner_ring : area.inner_rings(outer_ring))
+                        {
+                            polygon.inners.push_back(build_ring(inner_ring));
+                        }
+                        geometry.polygons.push_back(polygon);
+                    }
+                    // Determine the area type and create a new boundary
+                    map::Boundary::Type type;
+                    if (area.level() == m_config.territory_level)
+                    {
+                        type = model::map::Boundary::TERRITORY;
+                    }
+                    else
+                    {
+                        type = model::map::Boundary::BONUS;
+                    }
+                    point_type center = algorithm::center(geometry.polygons.at(0));
+                    boundaries.push_back(map::Boundary{
+                        area.id(),
+                        type,
+                        area.name(),
+                        area.level(),
+                        geometry,
+                        center
+                    });
+
+                }
+
+                return map::Map{ width, height, boundaries };
+            }
+
+            /* Misc */
+
             
         };
 
     }
 
 }
-
-#endif

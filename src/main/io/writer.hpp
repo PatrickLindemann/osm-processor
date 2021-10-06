@@ -1,16 +1,18 @@
-#ifndef IO_WRITER_HPP
-#define IO_WRITER_HPP
+#pragma once
 
-#include <boost/algorithm/string/join.hpp>
 #include <cfloat>
 #include <cmath>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <type_traits>
 
-#include "mapmaker/model.hpp"
-#include "geometry/model.hpp"
+#include "model/map/map.hpp"
+#include "model/map/boundary.hpp"
+#include "util/functions.hpp"
+
+using namespace model;
 
 namespace io
 {
@@ -18,7 +20,7 @@ namespace io
     namespace writer
     {
 
-        const void write_svg(std::string file_path, mapmaker::model::Map& map)
+        void write_svg(std::string file_path, const map::Map& map)
         {
             std::ofstream out{ file_path, std::ios::trunc };
             out.precision(4);
@@ -33,25 +35,33 @@ namespace io
             << "id=\"my-svg\" "
             << "width=\"" << map.width() << "px\" "
             << "height=\"" << map.height() << "px\""
-            << ">" << std::endl;
+            << ">";
 
             // Add paths
             size_t id = 0;
-            for (const auto& [k, t] : map.territories())
+            for (const auto& boundary : map.boundaries())
             {
+                // Ignore bonus links for now
+                if (boundary.type() == model::map::Boundary::BONUS)
+                {
+                    continue;   
+                }
+
                 out << "<path "
                     << "id=\"Territory_" << ++id << "\" "
-                    << "style=\"fill: none; stroke:black; stroke-width: 1px;\" "
+                    << "style=\"fill: blue; stroke:black; stroke-width: 1px;\" "
                     << "d=\"";
-                for (const auto& polygon : t.geometry.polygons)
+                for (const auto& polygon : boundary.geometry().polygons)
                 {
                     // Add outer points (clockwise)
                     out << "M ";
-                    for (auto i = polygon.outer.begin(); i != polygon.outer.end(); ++i)
+                    for (auto it = polygon.outer.begin(); it != polygon.outer.end(); ++it)
                     {   
-                        if (i == polygon.outer.begin() + 1)
+                        if (it == polygon.outer.begin() + 1)
+                        {
                             out << "L ";
-                        out << i->x << " " << i->y << " ";
+                        }
+                        out << it->x << " " << it->y << " ";
                     }
                     out << "Z";
                     if (polygon.inners.size() > 0)
@@ -60,17 +70,23 @@ namespace io
                         for (const auto& inner : polygon.inners)
                         {
                             out << " M ";
-                            for (auto i = inner.rbegin(); i != inner.rend(); ++i)
+                            for (auto it = inner.rbegin(); it != inner.rend(); ++it)
                             {   
-                                if (i == inner.rbegin() + 1)
+                                if (it == inner.rbegin() + 1)
+                                {
                                     out << "L ";
-                                out << i->x << " " << i->y << " ";
+                                }
+                                out << it->x << " " << it->y << " ";
                             }
                             out << "Z";
                         }
                     }
                 }
-                out << "\"/>" << std::endl;
+                out << "\"/>";
+
+                // Draw centerpoints
+                out << "<circle cx=\"" << boundary.center().x << "\" cy=\"" << boundary.center().y << "\" r=\"20\"/>";
+
             }
 
             // Add footers
@@ -81,5 +97,3 @@ namespace io
     }
 
 }
-
-#endif

@@ -11,28 +11,31 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 
-#include "mapmaker/model.hpp"
-#include "mapmaker/builder.hpp"
 #include "io/reader.hpp"
 #include "io/writer.hpp"
+#include "model/map/map.hpp"
+#include "mapmaker/algorithm.hpp"
+#include "mapmaker/compressor.hpp"
+#include "mapmaker/builder.hpp"
+#include "mapmaker/projector.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 using Clock = std::chrono::high_resolution_clock;
-
-static bool verbose;
+using time_point = std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>;
 
 int main(int argc, char* argv[])
 {      
     fs::path input;
     fs::path output;
-    int32_t territory_level;
-    int32_t bonus_level;
-    int32_t width;
-    int32_t height;
-    double_t epsilon;
-    bool cache;
+    int territory_level;
+    std::vector<int> bonus_levels;
+    int width;
+    int height;
+    double epsilon;
+    bool verbose;
+    bool benchmark;
 
     // Get the directory of the executable
     const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
@@ -44,26 +47,24 @@ int main(int argc, char* argv[])
             "Sets the input file path.\nAllowed file formats: .osm, .pbf")
         ("output,o", po::value<fs::path>(&output),
                 "Sets the target file path.\nAllowed file formats: .svg")
-        ("territory-level,l", po::value<int32_t>(&territory_level)->default_value(6),
+        ("territory-level,t", po::value<int>(&territory_level)->default_value(0),
             "Sets the admin_level of boundaries that will be be used as territories."
             "\nInteger between 1 and 12.")
-        ("bonus-level,b", po::value<int32_t>(&bonus_level)->default_value(0),
+        ("bonus-levels,b", po::value<std::vector<int>>(&bonus_levels)->multitoken(),
             "Sets the admin_level of boundaries that will be be used as bonus links."
-            "\nInteger between 1 and 12. If set to 0, no bonus links will be created.")
-        ("width", po::value<int32_t>(&width)->default_value(1000),
+            "\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
+        ("width,w", po::value<int>(&width)->default_value(1000),
             "Sets the generated map width in pixels."
             "\nIf set to 0, the width will be determined automatically.")
-        ("height", po::value<int32_t>(&height)->default_value(0),
+        ("height,h", po::value<int>(&height)->default_value(0),
             "Sets the generated map height in pixels."
             "\nIf set to 0, the height will be determined automatically.")
-        ("epsilon", po::value<double_t>(&epsilon)->default_value(0.0),
+        ("epsilon,e", po::value<double>(&epsilon)->default_value(0.0),
                 "Sets the minimum distance threshold between points for the Douglas-Peucker compression algorithm."
                 "\nIf set to 0, no compression will be applied.")
-        ("cache", po::bool_switch(&cache)->default_value(false),
-                "Enables caching of processed input files for faster executions later on.")
-        ("verbose,v", po::bool_switch(&verbose)->default_value(false), "Enables verbose logging.")
-        ("help,h", "Shows this help message.")
-    ;
+        ("benchmark", po::bool_switch(&benchmark)->default_value(false), "Enables benchmark mode.")
+        ("verbose", po::bool_switch(&verbose)->default_value(false), "Enables verbose logging.")
+        ("help,h", "Shows this help message.");
 
     // Parameter positions
     po::positional_options_description p;
@@ -78,7 +79,7 @@ int main(int argc, char* argv[])
     // Print help message if help flag was specified
     if (vm.count("help"))
     {
-        std::cout << "Usage: pbf-processor <input> [parameters]\n" << desc << std::endl;
+        std::cout << "Usage: warzone-osm-mapmaker <input> [parameters]\n" << desc << std::endl;
         return 0;
     }
 
@@ -112,8 +113,38 @@ int main(int argc, char* argv[])
     {
          output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".svg"));
     }
-    
-    // Validate dimensions
+
+    // Validate territory level
+    if (territory_level == 0)
+    {
+        std::cout << "[Error] " << "No territory level specified. Levels must be integers between 1 and 12." << std::endl;
+        return 1;
+    }
+    else if (territory_level < 1 || territory_level > 12)
+    {
+        std::cout << "[Error] " << "Invalid territory level " << territory_level << " specified. Levels must be integers between 1 and 12." << std::endl;
+        return 1;
+    }
+
+    // Validate bonus levels
+    if (!bonus_levels.empty())
+    {
+        for (auto& bonus_level : bonus_levels)
+        {
+            if (bonus_level < 1 || bonus_level > 12)
+            {
+                std::cout << "[Error] " << "Invalid bonus level " << bonus_level << " specified. Levels must be integers between 1 and 12." << std::endl;
+                return 1;
+            }
+            else if (territory_level >= bonus_level)
+            {
+                std::cout << "[Error] " << "Bonus level " << bonus_level << " is smaller than territory level " << territory_level << "." << std::endl;
+                return 1;
+            }
+        }
+    }
+
+    // Validate map dimensions
     if (width < 0)
     {
         std::cout << "[Error] " << "Invalid width " << width << " specified. Dimensions have to be greater or equal to 0 (auto)." << std::endl;
@@ -130,26 +161,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // Validate levels
-    if (territory_level < 1 || territory_level > 12)
-    {
-        std::cout << "[Error] " << "Invalid territory level " << territory_level << " specified. Levels must be integers between 1 and 12." << std::endl;
-        return 1;
-    }
-    if (bonus_level != 0)
-    {
-        if (bonus_level < 1 || bonus_level > 12)
-        {
-            std::cout << "[Error] " << "Invalid bonus level " << bonus_level << " specified. Levels must be integers between 1 and 12." << std::endl;
-            return 1;
-        }
-        else if (territory_level >= bonus_level)
-        {
-            std::cout << "[Error] " << "Bonus level " << bonus_level << " is smaller than territory level " << territory_level << "." << std::endl;
-            return 1;
-        }
-    }
-
     // Validate epsilon
     if (epsilon < 0)
     {   
@@ -157,43 +168,78 @@ int main(int argc, char* argv[])
         return 1;
     }
     
+    /*
     try
-    {   
-        auto start = Clock::now();
+    {
+    */  
+        // Print the title
+        std::cout << ""
+                  << " _       __                                     __  ___                            __            "        << '\n'
+                  << "| |     / /___ __________  ____  ____  ___     /  |/  /___ _____  ____ ___  ____ _/ /_____  _____"        << '\n'
+                  << "| | /| / / __ `/ ___/_  / / __ \\/ __ \\/ _ \\   / /|_/ / __ `/ __ \\/ __ `__ \\/ __ `/ //_/ _ \\/ ___/"  << '\n'
+                  << "| |/ |/ / /_/ / /    / /_/ /_/ / / / /  __/  / /  / / /_/ / /_/ / / / / / / /_/ / ,< /  __/ /    "        << '\n'
+                  << "|__/|__/\\__,_/_/    /___/\\____/_/ /_/\\___/  /_/  /_/\\__,_/ .___/_/ /_/ /_/\\__,_/_/|_|\\___/_/     "  << '\n'
+                  << "                                                        /_/                                      "        << std::endl;
 
-        std::cout << "Reading OSM data from " << input_path << "..." << std::endl;
-        // Extract areas with the specified criteria from the input file
-        std::vector<mapmaker::model::Boundary> boundaries = io::reader::read_osm(input_path.string(), cache);
-        std::cout << "Finished reading data." << std::endl;
+        // Create the vector for time measurments
+        std::vector<time_point> times;
 
-        // Prepare the map builder
-        mapmaker::builder::Builder builder {};
-        builder.set_width(width);
-        builder.set_height(height);
-        builder.set_boundaries(boundaries);
-        builder.set_territory_level(territory_level);
-        builder.set_bonus_level(bonus_level);
-        builder.set_epsilon(epsilon);
+        // Read the ile headers 
+        io::reader::FileInfo info = io::reader::get_fileinfo(input_path.string());
+        info.print(std::cout);
 
-        // Build the map
+        // TODO: if interactive mode: Ask for territory level and bonus level
+
+        // Read the file contents and extract the nodes, areas and graph
+        std::cout << "Reading file and assembling areas." << std::endl;
+        io::reader::FileData data = io::reader::get_data(input_path.string(), territory_level, bonus_levels);
+        if (!data.incomplete_relations.empty()) {
+            std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
+            for (const auto id : data.incomplete_relations) {
+                std::cerr << " " << id;
+            }
+            std::cerr << "\n";
+        }
+        std::cout << "Finished file reading." << std::endl;
+
+        // TODO: if interactive mode: Ask for compression level
+
+        // (-> Not the value, but provide multiple opts "NONE, HIGH, MEDIUM, LOW, ETC.")
+
+        // Compress the Buffers & Graph
+        if (epsilon > 0)
+        {
+            std::cout << "Compressing area edges... " << std::endl;
+            size_t nodes_before = data.node_buffer.size();
+            mapmaker::compressor::compress(data.node_buffer, data.area_buffer, data.graph, epsilon);
+            size_t nodes_after = data.node_buffer.size();
+            std::cout << "Compressed areas successfully." << '\n'
+                      << "Results: " << '\n'
+                      << "  Nodes (before): " << std::to_string(nodes_before) << '\n'
+                      << "  Nodes (after):  " << std::to_string(nodes_after) << std::endl;
+        }
+
+        //
         std::cout << "Building the map... " << std::endl;
-        mapmaker::model::Map map = builder.build();
+        mapmaker::builder::Config config{ width, height, territory_level, bonus_levels };
+        mapmaker::builder::Builder builder{ data.area_buffer, data.node_buffer, data.graph, config };
+        map::Map map = builder.build();
         std::cout << "Finished build sucessfully." << std::endl;
 
+        auto [components, vertex_component_list] = mapmaker::algorithm::get_components(data.graph);
+        
         // Export map as svg
         std::cout << "Exporting data to " << output_path << "..." << std::endl;
         io::writer::write_svg(output_path.string(), map);
         std::cout << "Data export finished." << std::endl;
 
-        // Show times
-        auto end = Clock::now();
-        std::chrono::duration<double_t, std::milli> total_ms = end - start;
-        std::cout << "Total execution time: " << total_ms.count() << "ms." << std::endl;
-
-    } catch (std::exception& ex) {
+    /*
+    }
+    catch (std::exception& ex) {
         std::cerr << "[Error]: " << ex.what() << std::endl;
         std::exit(1);
     }
+    */
 
     return 0;
 }

@@ -1,220 +1,183 @@
-#ifndef IO_READER_HPP
-#define IO_READER_HPP
+#pragma once
 
-#include <cstring>
-#include <osmium/osm/area.hpp>
-#include <osmium/osm/object.hpp>
 #include <set>
+#include <tuple>
 #include <string>
 #include <algorithm>
 
 #include <osmium/visitor.hpp>
 #include <osmium/io/any_input.hpp>
 #include <osmium/io/any_output.hpp>
+#include <osmium/io/file_format.hpp>
 #include <osmium/index/map/flex_mem.hpp>
+#include <osmium/tags/matcher.hpp>
 #include <osmium/area/assembler.hpp>
 #include <osmium/area/multipolygon_manager.hpp>
-#include <osmium/geom/factory.hpp>
-#include <osmium/geom/coordinates.hpp>
 #include <osmium/handler/node_locations_for_ways.hpp>
 
-#include <boost/numeric/conversion/cast.hpp>
+#include <boost/lexical_cast.hpp>
 
-#include "geometry/model.hpp"
-#include "mapmaker/model.hpp"
+#include "model/memory/buffer.hpp"
+#include "model/graph/undirected_graph.hpp"
+#include "handler/count_handler.hpp"
+#include "handler/area_handler.hpp"
+
+using namespace model;
 
 namespace io
 {
 
-    // The type of index used. This must match the include file above
-    using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
-
-    // The location handler always depends on the index type
-    using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
-
-    /**
-     * 
-     */
-    template <typename T = double_t>
-    class AreaFactoryImpl
-    {
-    public:
-
-        using point_type        = geometry::model::Point<T>;
-        using linestring_type   = geometry::model::Line<T>;
-        using polygon_type      = geometry::model::Polygon<T>;
-        using multipolygon_type = geometry::model::MultiPolygon<T>;
-
-        using point_list_type   = std::vector<point_type>;
-        using ring_type         = std::vector<point_type>;
-
-    private:
-
-        point_list_type m_point_sequence;
-        point_list_type m_outer_ring;
-        std::vector<point_list_type> m_inner_rings;
-        std::vector<polygon_type> m_polygons;
-
-    public:
-
-        AreaFactoryImpl(int srid) {};
-
-        /* Point */
-
-        point_type make_point(const osmium::geom::Coordinates& coords) const
-        {
-            return point_type{ coords.x, coords.y };
-        }
-
-        /* Line */
-
-        void linestring_start()
-        {
-            m_point_sequence.clear();
-        }
-
-        void linestring_add_location(const osmium::geom::Coordinates& coords)
-        {
-        m_point_sequence.push_back(point_type{ coords.x, coords.y });
-        }
-
-        linestring_type linestring_finish(size_t /* num_points */)
-        {
-            assert(m_point_sequence.size() >= 2);
-            return linestring_type{ m_point_sequence };
-        }
-
-        /* Polygon */
-
-        void polygon_start() {
-            m_point_sequence.clear();
-        }
-
-        void polygon_add_location(const osmium::geom::Coordinates& coords) {
-            m_point_sequence.push_back(point_type{ coords.x, coords.y });
-        }
-
-        polygon_type polygon_finish(size_t /* num_points */) {
-            return polygon_type{ m_point_sequence };
-        }
-
-        /* MultiPolygon */
-
-        void multipolygon_start() {
-            m_polygons.clear();
-        }
-
-        void multipolygon_polygon_start() {
-            m_inner_rings.clear();
-        }
-
-        void multipolygon_polygon_finish() {
-            m_polygons.push_back(polygon_type{
-                m_outer_ring,
-                m_inner_rings
-            });
-        }
-
-        void multipolygon_outer_ring_start() {
-            m_point_sequence.clear();
-        }
-
-        void multipolygon_outer_ring_finish() {
-            m_outer_ring = m_point_sequence;
-        }
-
-        void multipolygon_inner_ring_start() {
-            m_point_sequence.clear();
-        }
-
-        void multipolygon_inner_ring_finish() {
-            m_inner_rings.push_back(m_point_sequence);
-        }
-
-        void multipolygon_add_location(const osmium::geom::Coordinates& coords) {
-            m_point_sequence.push_back(point_type{ coords.x, coords.y });
-        }
-
-        multipolygon_type multipolygon_finish() {
-            return multipolygon_type{ m_polygons };
-        }
-
-    };
-
-    template <typename T = double_t, typename TProjection = osmium::geom::IdentityProjection>
-    using AreaFactory = osmium::geom::GeometryFactory<AreaFactoryImpl<T>, TProjection>;
-
-    /**
-     * 
-     */
-    template <typename T = double_t>
-    class AreaHandler : public osmium::handler::Handler
-    {
-    public:
-
-        typedef std::vector<mapmaker::model::Boundary> container_type;
-
-    private:
-
-        AreaFactory<T> m_factory;
-        container_type m_container;
-
-    public:
-
-        /* Accessors */
-
-        const container_type& container() const
-        {
-            return m_container;
-        }
-
-        /* Osmium functions */
-
-        void area(const osmium::Area& area)
-        {    
-            // Retrieve tag values
-            osmium::object_id_type id = area.id();                
-            const char * name = area.get_value_by_key("name", "");
-            const char * type = area.get_value_by_key("boundary", "");
-            const char * admin_level = area.get_value_by_key("admin_level", "0");
-            const char * source = area.get_value_by_key("source", "");;
-            const char * wikidata = area.get_value_by_key("wikidata", "");;
-
-            // Create MultiPolygon
-            geometry::model::MultiPolygon<T> multipolygon = m_factory.create_multipolygon(area);
-
-            // Create new area and add it to the container
-            mapmaker::model::Boundary boundary{
-                id,
-                name,
-                type,
-                std::stoi(admin_level),
-                multipolygon,
-                source,
-                wikidata
-            };
-            m_container.push_back(boundary);
-        }
-
-    };
-
     namespace reader
     {
         
-        template <typename T = double_t>
-        inline typename AreaHandler<T>::container_type read_osm(std::string file_path, bool cache)
+        /* Definitions */
+        
+        using NodeBuffer  = memory::Buffer<memory::Node>;
+        using AreaBuffer  = memory::Buffer<memory::Area>;
+        using Graph       = graph::UndirectedGraph;
+
+        /**
+         * 
+         */
+        struct FileInfo
+        {
+            /* Members */
+
+            // File information
+            std::string name;
+            osmium::io::file_format format;
+            osmium::io::file_compression compression;
+            size_t size;
+
+            // Osmium object information
+            size_t nodes;
+            size_t ways;
+            size_t relations;
+            
+            // Boundary information
+            size_t boundaries;
+            std::map<std::string, size_t> levels;
+
+            /* Methods */
+
+            /**
+             * @param stream
+             */
+            template <typename StreamType>
+            void print(StreamType& stream) const
+            {
+                stream << "File:" << '\n'
+                    << "  " << "Name: " << name << '\n'
+                    << "  " << "Format: " << format << '\n'
+                    << "  " << "Compression: " << compression << '\n'
+                    << "  " << "Size: " << size << '\n'
+                    << "Objects:" << '\n'
+                    << "  " << "Nodes: " << nodes << '\n'
+                    << "  " << "Ways: " << ways << '\n'
+                    << "  " << "Relations: " << relations << '\n'
+                    << "Boundaries: " << '\n'
+                    << "  " << "Total: " << boundaries << '\n'
+                    << "  " << "Levels: " << '\n';
+                for (auto& [level, count] : levels)
+                {
+                    stream << "    " << level << ": " << count << '\n';
+                }
+                stream << std::endl;
+            };
+
+        };
+
+        /**
+         * 
+         * @param file_path
+         * @returns
+         */
+        FileInfo get_fileinfo(const std::string& file_path)
+        {
+            // The Reader is initialized here with an osmium::io::File, but could
+            // also be directly initialized with a file name.
+            osmium::io::File input_file{ file_path };
+            osmium::io::Reader reader{ input_file };
+
+            // Create the CountHandler that counts the total number of nodes,
+            // ways and relations
+            handler::CountHandler count_handler;
+
+            // Create a TagCountHandler that counts the levels for administrative
+            // boundaries
+            handler::TagValueCountHandler level_handler{ "admin_level" };
+
+            // Apply the counters to the input file
+            osmium::apply(reader, count_handler, level_handler);
+
+            // You do not have to close the Reader explicitly, but because the
+            // destructor can't throw, you will not see any errors otherwise.
+            reader.close();
+
+            // Return results
+            return FileInfo{
+                file_path,
+                input_file.format(),
+                input_file.compression(),
+                input_file.buffer_size(),
+                count_handler.node_count(),
+                count_handler.way_count(),
+                count_handler.relation_count(),
+                level_handler.total(),
+                level_handler.counts()
+            };
+        }
+
+        /**
+         * 
+         */
+        struct FileData
+        {
+            NodeBuffer node_buffer;
+            AreaBuffer area_buffer;
+            Graph graph;
+            std::vector<osmium::object_id_type> incomplete_relations;
+        };
+
+        // The type of index used. This must match the include file above
+        using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+
+        // The location handler always depends on the index type
+        using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+
+        /**
+         * 
+         */
+        FileData get_data(const std::string file_path, int territory_level, std::vector<int> bonus_levels)
         {   
-            // TODO: check if cache and if file was already cached. If yes, parse it and return results
-            const osmium::io::File input_file{ file_path };
+            /* First pass */
+
+            //
+            osmium::io::File input_file{ file_path };
+
+            // Initialize progress bar, enable it only if STDERR is a TTY.
+            osmium::ProgressBar progress{input_file.size(), osmium::isatty(2)};
 
             // Configuration for the multipolygon assembler. Here the default settings
             // are used, but you could change multiple settings.
             osmium::area::Assembler::config_type assembler_config;
             
-            // Set up a filter matching only forests. This will be used to only build
-            // areas with matching tags.    
+            // Set up a filter matching only boundaries that have the defined
+            // territory level and bonus level(s). This implicitly also only
+            // matches administrative boundaries, as these are the only relations
+            // that can contain the admin_level tag.
             osmium::TagsFilter filter{ false };
-            filter.add_rule(true, "boundary", "administrative");
+            filter.add_rule(true, osmium::TagMatcher{
+                "admin_level",
+                boost::lexical_cast<std::string>(territory_level) 
+            });
+            for (auto& bonus_level : bonus_levels)
+            {
+                filter.add_rule(true, osmium::TagMatcher{
+                    "admin_level",
+                    boost::lexical_cast<std::string>(bonus_level) 
+                });
+            }
 
             // Initialize the MultipolygonManager. Its job is to collect all
             // relations and member ways needed for each area. It then calls an
@@ -225,62 +188,45 @@ namespace io
 
             // Pass through file for the first time and feed relations to the
             // multipolygon manager
-            std::cout << "Starting first pass (reading relations)..." << std::endl;
             osmium::relations::read_relations(input_file, mp_manager);
-            std::cout << "First pass done." << std::endl;
 
-            std::cout << "Used Memory:" << std::endl;
-            osmium::relations::print_used_memory(std::cout, mp_manager.used_memory());
+            /* Second pass */
 
-            // The index storing all node locations
+            // The index map that maps node indices to their locations
             index_type index;
             
-            // The handler that stores all node locations in the index and adds
-            // them to the ways
+            // The handler that stores handles node indices in ways and relations.
             location_handler_type location_handler{ index };
-            location_handler.ignore_errors();
+            location_handler.ignore_errors();         
+            
+            //
+            handler::AreaHandler area_handler {};
 
-            // The area handler
-            AreaHandler<T> handler{};
+            //
+            osmium::io::Reader reader{ input_file, osmium::io::read_meta::no };
 
             // Pass through file for the second time and process the objects
-            std::cout << "Starting second pass (reading and compressing nodes and ways)..." << std::endl;
-            osmium::io::Reader reader{ input_file, osmium::io::read_meta::no };
-            osmium::apply(reader, location_handler, mp_manager.handler([&handler, &cache](osmium::memory::Buffer&& buffer) {
-                osmium::apply(buffer, handler);
-                if (cache)
-                {
-                    osmium::io::Writer writer{ "../out/write.osm", osmium::io::overwrite::allow };
-                    writer(std::move(buffer));
-                    writer.close();
-                }
-            }));
-            reader.close();
-            std::cout << "Second pass done." << std::endl;
-
-            std::cout << "Used Memory:" << std::endl;
-            osmium::relations::print_used_memory(std::cout, mp_manager.used_memory());
+            FileData result;
+            osmium::apply(reader, location_handler, mp_manager.handler(
+                [&result, &area_handler](osmium::memory::Buffer&& buffer) {
+                    osmium::apply(buffer, area_handler);
+                    result.node_buffer = area_handler.node_buffer();
+                    result.area_buffer = area_handler.area_buffer();
+                    result.graph = area_handler.graph();
+                })
+            );
 
             // If there were multipolgyon relations in the input, but some of their
-            // members are not in the input file (which often happens for extracts)
-            // this will write the IDs of the incomplete relations to stderr.
+            // members are not in the input file (which often happens for extracts),
+            // mark them as incomplete in the result data.
             std::vector<osmium::object_id_type> incomplete_relations_ids;
             mp_manager.for_each_incomplete_relation([&](const osmium::relations::RelationHandle& handle){
-                incomplete_relations_ids.push_back(handle->id());
+                result.incomplete_relations.push_back(handle->id());
             });
-            if (!incomplete_relations_ids.empty()) {
-                std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
-                for (const auto id : incomplete_relations_ids) {
-                    std::cerr << " " << id;
-                }
-                std::cerr << "\n";
-            }
 
-            return handler.container();
+            return result;
         }
 
     }
 
 }
-
-#endif
