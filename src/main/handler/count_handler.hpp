@@ -11,13 +11,11 @@
 #include <osmium/handler.hpp>
 
 #include "util/table.hpp"
-#include "util/functions.hpp"
 
 namespace handler
 {
 
     /**
-     * 
      * Port of https://github.com/osmcode/libosmium/blob/master/examples/osmium_count.cpp
      */
     class CountHandler : public osmium::handler::Handler {
@@ -55,7 +53,7 @@ namespace handler
 
         /* Osmium functions */
 
-        void node(const osmium::Node&) noexcept {
+        void node(const osmium::Node& node) noexcept {
             ++m_nodes;
         }
 
@@ -69,9 +67,6 @@ namespace handler
 
     };
 
-    /**
-     * 
-     */
     class TagValueCountHandler : public osmium::handler::Handler {
     public:
 
@@ -82,31 +77,13 @@ namespace handler
 
     private:
 
-        /**
-         * 
-         */
         key_type m_key;
-
-        /**
-         * 
-         */
         count_type m_total = 0;
-
-        /**
-         * 
-         */
         map_type m_counts;
 
     public:
 
-        /* Constructors */
-
-        /**
-         * 
-         */
         TagValueCountHandler(key_type key) : m_key(key) {};
-
-        /* Accessors */
 
         const count_type total() const
         {
@@ -117,8 +94,6 @@ namespace handler
         {
             return m_counts;
         };
-
-        /* Osmium functions */
 
         void relation(const osmium::Relation& relation) noexcept {
             // Retreive tag value
@@ -132,11 +107,6 @@ namespace handler
             }       
         }
 
-        /* Printing functions */
-
-        /**
-         * 
-         */
         template <typename StreamType>
         void print(StreamType& stream) const
         {

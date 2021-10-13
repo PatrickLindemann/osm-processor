@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cmath>
-
 #include "model/memory/entity.hpp"
 #include "model/geometry/point.hpp"
 
@@ -11,41 +9,22 @@ namespace model
     namespace memory
     {
 
-        /**
-         * 
-         */
+        template <typename T>
         class Node : public Entity
         {
         public:
 
-            using point_type = geometry::Point<double>;
+            using point_type = geometry::Point<T>;
 
         protected:
-
-            /* Members */
 
             point_type m_point;
 
         public:
 
-            /* Constructors */
-
-            /**
-             * 
-             */
-            Node(id_type id) : Entity(id), m_point(0.0, 0.0) {};
-
-            /**
-             * 
-             */
-            Node(id_type id, double x, double y) : Entity(id), m_point(x, y) {};
-
-            /**
-             * 
-             */
+            Node(id_type id) : Entity(id), m_point( T(0), T(0) ) {};
+            Node(id_type id, double lon, double lat) : Entity(id), m_point(lon, lat) {};
             Node(id_type id, geometry::Point<double> point) : Entity(id), m_point(point) {};
-            
-            /* Accessors */
 
             point_type& point()
             {
@@ -57,22 +36,22 @@ namespace model
                 return m_point;
             }
 
-            double& lon()
+            T& lon()
             {
                 return m_point.x;
             }
 
-            const double& lon() const
+            const T& lon() const
             {
                 return m_point.x;
             }
 
-            double& lat()
+            T& lat()
             {
                 return m_point.y;
             }
 
-            const double& lat() const
+            const T& lat() const
             {
                 return m_point.y;
             }

@@ -67,16 +67,6 @@ namespace model
                 return this->max.y - this->min.y;
             }
 
-            const double area() const
-            {
-                return this->width() * this->height();
-            }
-
-            const double circumference() const
-            {
-                return 2 * (this->width() + this->height());
-            }
-
             Rectangle<T>& extend(const point_type& p) {
                 if (p.x < this->min.x) this->min.x = p.x;
                 if (p.y < this->min.y) this->min.y = p.y;

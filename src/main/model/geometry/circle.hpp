@@ -41,17 +41,7 @@ namespace model
 
             const double diameter() const
             {
-                return this->radius * 2;
-            }
-
-            const double area() const
-            {
-                return M_PI * std::pow(this->radius, 2);
-            }
-
-            const double circumference() const
-            {
-                return 2 * this->radius * M_PI;
+                return radius * 2;
             }
 
         };

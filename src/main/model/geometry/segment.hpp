@@ -31,7 +31,7 @@ namespace model
 
             /* Constructor */
 
-            Segment(point_type first, point_type last) : points(first, last) {};
+            Segment(point_type first, point_type last) : points({ first, last }) {};
 
             /* Methods */
 
@@ -62,12 +62,12 @@ namespace model
 
             point_type& at(size_t index)
             {
-                return points.at[index];
+                return points.at(index);
             }
             
             const point_type& at(size_t index) const
             {
-                return points.at[index];
+                return points.at(index);
             }
 
             point_type& operator[](const size_t index)
@@ -80,24 +80,16 @@ namespace model
                 return points[index];
             }
 
-            iterator begin() noexcept
+            bool operator==(const Segment<T>& other) const
             {
-                return points.begin();
+                return (points[0] == other.first() && points[1] == other.last())
+                    || (points[0] == other.last() && points[1] == other.first());
             }
 
-            const_iterator begin() const noexcept
+            bool operator!=(const Segment<T>& other) const
             {
-                return points.cbegin();
-            }
-
-            iterator end() noexcept
-            {
-                return points.end();
-            }
-
-            const_iterator end() const noexcept
-            {
-                return points.cend();
+                return (points[0] != other.first() || points[1] != other.last())
+                    && (points[0] != other.last() || points[1] != other.first());
             }
 
         };

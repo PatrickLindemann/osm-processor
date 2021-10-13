@@ -20,26 +20,16 @@ namespace model
 
         protected:
 
-            id_type m_id = -1;
+            id_type m_id;
             
-            /**
-             * 
-             */
-            Entity(id_type id) : m_id(id) {}; /* Can only be instantiated by derived classes */
+            Entity(id_type id) : m_id(id) {};
 
         public:
 
-            /* Methods */
-
-            /**
-             * 
-             */
             const id_type id() const
             {
                 return m_id;
             }
-
-            /* Operators */
 
             bool operator==(const Entity& other) const
             {

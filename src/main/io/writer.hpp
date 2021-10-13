@@ -10,7 +10,7 @@
 
 #include "model/map/map.hpp"
 #include "model/map/boundary.hpp"
-#include "util/functions.hpp"
+#include "util/misc.hpp"
 
 using namespace model;
 
@@ -19,10 +19,67 @@ namespace io
 
     namespace writer
     {
-
-        void write_svg(std::string file_path, const map::Map& map)
+        
+        /**
+         * 
+         */
+        void write_metadata(std::string file_path, const map::Map& map)
         {
-            std::ofstream out{ file_path, std::ios::trunc };
+            std::ofstream out{ file_path + ".json", std::ios::trunc };
+            out.precision(4);
+
+            // Write headers
+            out << "{"
+                << "\"name\":" << '\"' << map.name() << '\"' << ','
+                << "\"created\":" << '\"' << util::get_current_iso_timestamp() << '\"' << ','
+                << "\"levels\":" << '[' << util::join(map.levels()) << ']' << ',';
+
+            // Write boundary information
+            out << "\"boundaries\":" << '[';
+            // Write territories
+            out << "\"territories\":" << '[';
+            for (const map::Territory& territory : map.territories())
+            {
+                out << "\"id\":" << territory.id() << ','
+                    << "\"name\":" << '\"' << territory.name() << '\"' << ','
+                    << "\"center\":" << '['
+                        << territory.center.x << ','
+                        << territory.center.y
+                    << ']' << ','
+                    << "\"neighbors\":" << '['
+                        << util::join(territory.neighbors())
+                    << ']';
+            }
+            out << ']'; // End territories
+            // Write bonuses
+            out << "\"bonuses\":[";
+            for (const map::Bonus& bonus : map.bonuses())
+            {
+                out << "\"id\":" << bonus.id() << ','
+                    << "\"name\":" << '\"' << bonus.name() << '\"' << ','
+                    << "\"color\":" << '\"' << bonus.color() << '\"' << ','
+                    << "\"armies\":" << '\"' << bonus.color() << '\"' << ',';
+                if (bonus.is_super_bonus())
+                {
+                    out << "\"bonuses\":" << '[' << util::join(bonus.children()) << ']';
+                }
+                else
+                {
+                    out << "\"territories\":" << '[' << util::join(bonus.children()) << ']';
+                }
+            }
+            out << ']'; // End bonues
+            out << ']'; // End boundaries
+
+            out << "}" << std::endl; // End file
+        }
+
+        /**
+         * 
+         */
+        void write_map(std::string file_path, const map::Map& map)
+        {
+            std::ofstream out{ file_path + ".svg", std::ios::trunc };
             out.precision(4);
 
             if (!out.is_open())
@@ -30,15 +87,14 @@ namespace io
                 return; // TODO Error handling
             }
 
-            // Add headers
+            // Write headers
             out << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
             << "id=\"my-svg\" "
             << "width=\"" << map.width() << "px\" "
             << "height=\"" << map.height() << "px\""
             << ">";
 
-            // Add paths
-            size_t id = 0;
+            // Write the paths
             for (const auto& boundary : map.boundaries())
             {
                 // Ignore bonus links for now
@@ -48,7 +104,78 @@ namespace io
                 }
 
                 out << "<path "
-                    << "id=\"Territory_" << ++id << "\" "
+                    << "id=\"Territory_" << boundary.id() << "\" "
+                    << "style=\"fill: blue; stroke:black; stroke-width: 1px;\" "
+                    << "d=\"";
+                for (const auto& polygon : boundary.geometry().polygons)
+                {
+                    // Add outer points (clockwise)
+                    out << "M ";
+                    for (auto it = polygon.outer.begin(); it != polygon.outer.end(); ++it)
+                    {   
+                        if (it == polygon.outer.begin() + 1)
+                        {
+                            out << "L ";
+                        }
+                        out << it->x << " " << it->y << " ";
+                    }
+                    out << "Z";
+                    if (polygon.inners.size() > 0)
+                    {
+                        // Add inner points (counter-clockwise)
+                        for (const auto& inner : polygon.inners)
+                        {
+                            out << " M ";
+                            for (auto it = inner.rbegin(); it != inner.rend(); ++it)
+                            {   
+                                if (it == inner.rbegin() + 1)
+                                {
+                                    out << "L ";
+                                }
+                                out << it->x << " " << it->y << " ";
+                            }
+                            out << "Z";
+                        }
+                    }
+                }
+                out << "\"/>"; // End path
+
+            }
+
+            out << "</svg>" << std::endl; // End file
+        }
+
+        /**
+         * 
+         */
+        void write_preview(std::string file_path, const map::Map& map)
+        {
+            std::ofstream out{ file_path + ".preview.svg", std::ios::trunc };
+            out.precision(4);
+
+            if (!out.is_open())
+            {
+                return; // TODO Error handling
+            }
+
+            // Write headers
+            out << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
+            << "id=\"my-svg\" "
+            << "width=\"" << map.width() << "px\" "
+            << "height=\"" << map.height() << "px\""
+            << ">";
+
+            // Write the paths
+            for (const auto& boundary : map.boundaries())
+            {
+                // Ignore bonus links for now
+                if (boundary.type() == model::map::Boundary::BONUS)
+                {
+                    continue;   
+                }
+
+                out << "<path "
+                    << "id=\"Territory_" << boundary.id() << "\" "
                     << "style=\"fill: blue; stroke:black; stroke-width: 1px;\" "
                     << "d=\"";
                 for (const auto& polygon : boundary.geometry().polygons)
@@ -84,14 +211,44 @@ namespace io
                 }
                 out << "\"/>";
 
-                // Draw centerpoints
-                out << "<circle cx=\"" << boundary.center().x << "\" cy=\"" << boundary.center().y << "\" r=\"20\"/>";
-
+            }
+            // Draw envelopes
+            for (const auto& boundary : map.boundaries())
+            {
+                for (const auto& poly : boundary.geometry().polygons)
+                {
+                    auto envelope = mapmaker::algorithm::envelope(poly);
+                    out << "<rect "
+                        << "id=\"" << boundary.id() << "\" "
+                        << "x=\"" << envelope.min.x << "\" "
+                        << "y=\"" << envelope.min.y << "\" "
+                        << "width=\"" << envelope.width() << "\" "
+                        << "height=\"" << envelope.height() << "\" "
+                        << "fill=\"none\" " 
+                        << "stroke=\"red\" " 
+                        << "stroke-width=\"1\"" 
+                        << "/>";
+                }
+                out << "<circle "
+                    << "id=\"Center_" << boundary.id() << "\" "
+                    << "cx=\"" << boundary.center().x << "\" "
+                    << "cy=\"" << boundary.center().y << "\" "
+                    << "r=\"2\" "
+                    << "fill=\"black\""
+                    << "/>";
+                out << "<circle "
+                    << "id=\"Center_Radius_" << boundary.id() << "\" "
+                    << "cx=\"" << boundary.center().x << "\" "
+                    << "cy=\"" << boundary.center().y << "\" "
+                    << "r=\"20\" "
+                    << "fill=\"none\" "
+                    << "stroke=\"black\" "
+                    << "stroke-width=\"1\""
+                    << "/>";
             }
 
             // Add footers
-            out << "</svg>" << std::endl;
-
+            out << "</svg>" << std::endl;            
         }
 
     }

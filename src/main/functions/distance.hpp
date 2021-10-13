@@ -2,34 +2,16 @@
 
 #include <cfloat>
 #include <cmath>
-#include <queue>
 
 #include "model/geometry/point.hpp"
-#include "model/geometry/polygon.hpp"
-#include "model/geometry/rectangle.hpp"
 #include "model/geometry/ring.hpp"
+#include "model/geometry/polygon.hpp"
+#include "functions/util.hpp"
 
-using namespace model;
-
-namespace util
+namespace functions
 {
 
-    /**
-     * Calculate the dot product of two points
-     * 
-     * @param p The first point
-     * @param q The second point
-     * @return The dot product of p and q
-     * 
-     * Time complexity: Constant
-     */
-    template <typename T>
-    inline double dot(
-        const geometry::Point<T>& p,
-        const geometry::Point<T>& q
-    ) {
-        return p.x * q.x + p.y * q.y;
-    }
+    using namespace model;
 
     /**
      * Calculate the distance between two points
@@ -99,15 +81,16 @@ namespace util
         const geometry::Point<T>& point,
         const geometry::Ring<T>& ring
     ) {
+        
+        double result = DBL_MAX;
+        bool inside = false;
+
         // Check for invalid rings
         if (ring.size() < 3)
         {
-            // TODO throw error
+            return result;
         }
-
-        double result = DBL_MAX;
-        bool inside = true;
-
+        
         // Iterate over the ring segments and determine the minimum
         // distance between the point and any segment
         for (size_t i = 0, j = 1; j < ring.size(); i++, j++) {
@@ -117,9 +100,8 @@ namespace util
             // Check if point is inside or outside of the ring
             if ((left.y > point.y) != (right.y > point.y))
             {
-                double x = (right.x - left.x) + left.x;
-                double y = (point.y - left.y) / (right.y - left.y);
-                if (point.x < x * y)
+                double f = (right.x - left.x) * (point.y - left.y) / (right.y - left.y) + left.x;
+                if (point.x < f)
                 {
                     inside = !inside;
                 }
@@ -128,13 +110,10 @@ namespace util
             // Determine the perpendicular distance to the current segment
             // and save it if it is the new minimum
             double d = perpendicular_distance(point, left, right);
-            if (d < result)
-            {
-                result = d;
-            }
+            result = std::min(d, result);
         }
 
-        return -1 * !inside * std::sqrt(result);
+        return (inside ? 1 : -1) * std::sqrt(result);
     }
 
     /**
@@ -159,10 +138,7 @@ namespace util
         for (const auto& inner : polygon.inners)
         {
             double d = distance_to_ring(point, inner);
-            if (std::abs(d) < std::abs(result))
-            {
-                result = d;
-            }    
+            result = std::min(d, result); 
         }
 
         return result;

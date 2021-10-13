@@ -2,22 +2,26 @@
 #include <iostream>
 #include <exception>
 #include <algorithm>
+#include <unordered_map>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <osmium/memory/buffer.hpp>
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 
+#include <osmium/memory/buffer.hpp>
+
+#include "model/container.hpp"
+#include "model/graph/undirected_graph.hpp"
+#include "mapmaker/compressor.hpp"
+#include "mapmaker/assembler.hpp"
+#include "mapmaker/inspector.hpp"
+#include "mapmaker/projector.hpp"
+#include "functions/project.hpp"
 #include "io/reader.hpp"
 #include "io/writer.hpp"
-#include "model/map/map.hpp"
-#include "mapmaker/algorithm.hpp"
-#include "mapmaker/compressor.hpp"
-#include "mapmaker/builder.hpp"
-#include "mapmaker/projector.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -29,10 +33,10 @@ int main(int argc, char* argv[])
 {      
     fs::path input;
     fs::path output;
-    int territory_level;
-    std::vector<int> bonus_levels;
-    int width;
-    int height;
+    unsigned short territory_level;
+    std::vector<unsigned short> bonus_levels;
+    unsigned int width;
+    unsigned int height;
     double epsilon;
     bool verbose;
     bool benchmark;
@@ -47,16 +51,16 @@ int main(int argc, char* argv[])
             "Sets the input file path.\nAllowed file formats: .osm, .pbf")
         ("output,o", po::value<fs::path>(&output),
                 "Sets the target file path.\nAllowed file formats: .svg")
-        ("territory-level,t", po::value<int>(&territory_level)->default_value(0),
+        ("territory-level,t", po::value<unsigned short>(&territory_level)->default_value(0),
             "Sets the admin_level of boundaries that will be be used as territories."
             "\nInteger between 1 and 12.")
-        ("bonus-levels,b", po::value<std::vector<int>>(&bonus_levels)->multitoken(),
+        ("bonus-levels,b", po::value<std::vector<unsigned short>>(&bonus_levels)->multitoken(),
             "Sets the admin_level of boundaries that will be be used as bonus links."
             "\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
-        ("width,w", po::value<int>(&width)->default_value(1000),
+        ("width,w", po::value<unsigned int>(&width)->default_value(1000),
             "Sets the generated map width in pixels."
             "\nIf set to 0, the width will be determined automatically.")
-        ("height,h", po::value<int>(&height)->default_value(0),
+        ("height,h", po::value<unsigned int>(&height)->default_value(0),
             "Sets the generated map height in pixels."
             "\nIf set to 0, the height will be determined automatically.")
         ("epsilon,e", po::value<double>(&epsilon)->default_value(0.0),
@@ -111,7 +115,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(".svg"));
+         output_path = FILE_PATH.parent_path() / "../out" / (input_path.filename().replace_extension(""));
     }
 
     // Validate territory level
@@ -136,9 +140,9 @@ int main(int argc, char* argv[])
                 std::cout << "[Error] " << "Invalid bonus level " << bonus_level << " specified. Levels must be integers between 1 and 12." << std::endl;
                 return 1;
             }
-            else if (territory_level >= bonus_level)
+            else if (bonus_level >= territory_level)
             {
-                std::cout << "[Error] " << "Bonus level " << bonus_level << " is smaller than territory level " << territory_level << "." << std::endl;
+                std::cout << "[Error] " << "Bonus level " << bonus_level << " is greater or equal than territory level " << territory_level << "." << std::endl;
                 return 1;
             }
         }
@@ -168,78 +172,123 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    /*
-    try
+    // Print the title
+    std::cout << ""
+                << " _       __                                     __  ___                            __            "        << '\n'
+                << "| |     / /___ __________  ____  ____  ___     /  |/  /___ _____  ____ ___  ____ _/ /_____  _____"        << '\n'
+                << "| | /| / / __ `/ ___/_  / / __ \\/ __ \\/ _ \\   / /|_/ / __ `/ __ \\/ __ `__ \\/ __ `/ //_/ _ \\/ ___/"  << '\n'
+                << "| |/ |/ / /_/ / /    / /_/ /_/ / / / /  __/  / /  / / /_/ / /_/ / / / / / / /_/ / ,< /  __/ /    "        << '\n'
+                << "|__/|__/\\__,_/_/    /___/\\____/_/ /_/\\___/  /_/  /_/\\__,_/ .___/_/ /_/ /_/\\__,_/_/|_|\\___/_/     "  << '\n'
+                << "                                                        /_/                                      "        << std::endl;
+
+    // TODO: interactive mode
+
+    // Create the vector for time measurments
+    std::vector<time_point> times;
+
+    /* Read the file headers */
+    model::InfoContainer<double> info; 
+    io::reader::get_info(info, input_path.string());
+    info.print(std::cout);
+
+    /* Read the file contents and extract the nodes, ways and relations */
+    std::cout << "Reading file data from file \"" << input_path << "\"..." << std::endl;
+    model::DataContainer<double> data;
+    io::reader::get_data(data, input_path.string(), territory_level, bonus_levels);
+    if (!data.incomplete_relations.empty()) {
+        std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
+        for (const auto id : data.incomplete_relations) {
+            std::cerr << " " << id;
+        }
+        std::cerr << "\n";
+    }
+    std::cout << "Finished file reading." << std::endl;
+
+    /* Compress the extracted ways */
+    if (epsilon > 0)
     {
-    */  
-        // Print the title
-        std::cout << ""
-                  << " _       __                                     __  ___                            __            "        << '\n'
-                  << "| |     / /___ __________  ____  ____  ___     /  |/  /___ _____  ____ ___  ____ _/ /_____  _____"        << '\n'
-                  << "| | /| / / __ `/ ___/_  / / __ \\/ __ \\/ _ \\   / /|_/ / __ `/ __ \\/ __ `__ \\/ __ `/ //_/ _ \\/ ___/"  << '\n'
-                  << "| |/ |/ / /_/ / /    / /_/ /_/ / / / /  __/  / /  / / /_/ / /_/ / / / / / / /_/ / ,< /  __/ /    "        << '\n'
-                  << "|__/|__/\\__,_/_/    /___/\\____/_/ /_/\\___/  /_/  /_/\\__,_/ .___/_/ /_/ /_/\\__,_/_/|_|\\___/_/     "  << '\n'
-                  << "                                                        /_/                                      "        << std::endl;
+        std::cout << "Compressing ways... " << std::endl;
+        size_t nodes_before = data.nodes.size();
+        mapmaker::compressor::Compressor compressor{data.nodes, data.ways, epsilon};
+        compressor.run();
+        size_t nodes_after = data.nodes.size();
+        std::cout << "Compressed ways successfully." << '\n'
+                    << "Results: " << '\n'
+                    << "  Nodes (before): " << std::to_string(nodes_before) << '\n'
+                    << "  Nodes (after):  " << std::to_string(nodes_after) << std::endl;
+    }
 
-        // Create the vector for time measurments
-        std::vector<time_point> times;
+    /* Normalize the extracted areas */
+    std::cout << "Assembling areas from relations..." << std::endl;    
+    mapmaker::assembler::Assembler<double> assembler{ data.nodes, data.ways, data.relations };
+    data.areas = assembler.build();
+    std::cout << "Assembled areas successfully." << '\n'
+                << "Results: " << '\n'
+                << "  Relations (before): " << std::to_string(data.relations.size()) << '\n'
+                << "  Areas (after):      " << std::to_string(data.areas.size()) << std::endl;
 
-        // Read the ile headers 
-        io::reader::FileInfo info = io::reader::get_fileinfo(input_path.string());
-        info.print(std::cout);
+    /* Retrieve the relations for the areas */
+    std::cout << "Calculating area relations (neighbors, components, subareas)... " << std::endl;
+    mapmaker::inspector::Inspector<double> inspector{ data.nodes, data.ways, data.areas };
+    inspector.run();
+    data.neighbors = inspector.neighbors();
+    data.components = inspector.components();
+    std::cout << "Calculated relations sucessfully. " << std::endl;
 
-        // TODO: if interactive mode: Ask for territory level and bonus level
+    /* Apply the map projections */
+    std::cout << "Applying the map projections... " << std::endl;
+    mapmaker::projector::Projector projector{ data.nodes };  
+    // Convert the map coordinates to radians
+    projector.apply(functions::RadianProjection<double>{});
+    // Apply the MercatorProjection
+    projector.apply(functions::MercatorProjection<double>{});
+    std::cout << "Applied projections sucessfully on " << data.nodes.size() << " nodes." << std::endl;
 
-        // Read the file contents and extract the nodes, areas and graph
-        std::cout << "Reading file and assembling areas." << std::endl;
-        io::reader::FileData data = io::reader::get_data(input_path.string(), territory_level, bonus_levels);
-        if (!data.incomplete_relations.empty()) {
-            std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
-            for (const auto id : data.incomplete_relations) {
-                std::cerr << " " << id;
-            }
-            std::cerr << "\n";
-        }
-        std::cout << "Finished file reading." << std::endl;
-
-        // TODO: if interactive mode: Ask for compression level
-
-        // (-> Not the value, but provide multiple opts "NONE, HIGH, MEDIUM, LOW, ETC.")
-
-        // Compress the Buffers & Graph
-        if (epsilon > 0)
+    /* Scale the map */
+    std::cout << "Scaling the map... " << std::endl;
+    geometry::Rectangle<double> bounds = projector.bounds();
+    // Check if a dimension is set to auto and calculate its value
+    // depending on the map bounds    if (width == 0 || height == 0)
+    {
+        if (width == 0)
         {
-            std::cout << "Compressing area edges... " << std::endl;
-            size_t nodes_before = data.node_buffer.size();
-            mapmaker::compressor::compress(data.node_buffer, data.area_buffer, data.graph, epsilon);
-            size_t nodes_after = data.node_buffer.size();
-            std::cout << "Compressed areas successfully." << '\n'
-                      << "Results: " << '\n'
-                      << "  Nodes (before): " << std::to_string(nodes_before) << '\n'
-                      << "  Nodes (after):  " << std::to_string(nodes_after) << std::endl;
+            width = bounds.width() / bounds.height() * height;
         }
-
-        //
-        std::cout << "Building the map... " << std::endl;
-        mapmaker::builder::Config config{ width, height, territory_level, bonus_levels };
-        mapmaker::builder::Builder builder{ data.area_buffer, data.node_buffer, data.graph, config };
-        map::Map map = builder.build();
-        std::cout << "Finished build sucessfully." << std::endl;
-
-        auto [components, vertex_component_list] = mapmaker::algorithm::get_components(data.graph);
-        
-        // Export map as svg
-        std::cout << "Exporting data to " << output_path << "..." << std::endl;
-        io::writer::write_svg(output_path.string(), map);
-        std::cout << "Data export finished." << std::endl;
-
-    /*
+        else
+        {
+            height = bounds.height() / bounds.width() * width;
+        }
     }
-    catch (std::exception& ex) {
-        std::cerr << "[Error]: " << ex.what() << std::endl;
-        std::exit(1);
-    }
-    */
+    // Apply the scaling projections
+    // Scale the map according to the dimensions
+    projector.apply(functions::UnitProjection<double>{
+        { bounds.min.x, bounds.max.x },
+        { bounds.min.y, bounds.max.y }
+    });
+    projector.apply(functions::IntervalProjection<double>{
+        { 0.0, 1.0 }, { 0.0, 1.0 }, { 0.0, width }, { 0.0, height }
+    });
+    std::cout << "Scaled the map sucessfully. The output size will be " << width << "x" << height << "px" << std::endl;
 
+    // Assemble the geometries
+    std::cout << "Building the boundary geometries... " << std::endl;
+    std::cout << "Built geometries successfully. " << std::endl;
+
+    // Calculate the centerpoints
+    std::cout << "Calculating centerpoints... " << std::endl;
+    std::cout << "Calculated centerpoints successfully. " << std::endl;
+
+    // Export the map data as .svg file
+    std::cout << "Exporting map data..." << std::endl;
+    std::string outpath_string = output_path.string();
+    io::writer::write_metadata(outpath_string, map);
+    std::cout << "Exported metadata to " << output_path << ".json" << std::endl;
+    io::writer::write_map(outpath_string, map);
+    std::cout << "Exported map to " << output_path << ".svg" << std::endl;
+    io::writer::write_preview(outpath_string, map);
+    std::cout << "Exported metadata to " << output_path << ".preview.svg" << std::endl;
+    std::cout << "Data export finished successfully. " << std::endl;
+
+    std::cout << "Finished Mapmaker after " << 0 << " seconds." << std::endl;
     return 0;
 }
