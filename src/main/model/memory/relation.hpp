@@ -8,7 +8,6 @@
 
 #include "model/memory/entity.hpp"
 #include "model/memory/member.hpp"
-#include "model/memory/types.hpp"
 
 namespace model
 {
@@ -16,33 +15,38 @@ namespace model
     namespace memory
     {
 
-        template <typename T>
+        /**
+         * 
+         */
         class Relation : public Entity
         {
-        public:
+            
+            /* Types */
 
-            /**
-             * 
-             */
             using tag_container = std::unordered_map<std::string, std::string>;
-
-            /**
-             * 
-             */
-            using member_container = std::vector<Member<T>>;
+            using member_container = std::vector<Member>;
 
         protected:
 
+            /* Members */
+
+            /**
+             * The map of tags as Key-Value pairs.
+             */
             tag_container m_tags;
+
+            /**
+             * The relation members.
+             */
             member_container m_members;
 
         public:
 
-            Relation(id_type id) : Entity(id) {};
-            Relation(id_type id, tag_container& tags)
-            : Entity(id), m_tags(tags) {};
-            Relation(id_type id, tag_container& tags, member_container& members)
-            : Entity(id), m_tags(tags), m_members(members) {};
+            /* Constructors */
+
+            Relation(object_id_type id) : Entity(id) {};
+
+            /* Accessors */
 
             tag_container& tags()
             {
@@ -64,6 +68,8 @@ namespace model
                 return m_members;
             }
 
+            /* Tag methods */
+
             void add_tag(std::string key, std::string value)
             {
                 m_tags[key] = value;
@@ -79,27 +85,31 @@ namespace model
                 return default_value;
             }
 
-            void add_member(const Member<T>& member)
+            /* Member methods */
+
+            void add_member(const Member& member)
             {
                 m_members.push_back(member);
             }
 
-            std::vector<id_type> get_members_by_role(std::string role) const
+            std::vector<Member> get_members_by_role(std::string role) const
             {
-                std::vector<id_type> result;
+                std::vector<Member> members;
                 boost::algorithm::to_lower(role);
                 for (const auto& member : m_members)
                 {
                     if (member.role() == role)
                     {
-                        result.push_back(member.ref());
+                        members.push_back(member.ref());
                     }
                 }
-                return result;
+                return members;
             }
 
         };
 
+        class RelationRef : public EntityRef {};
+        
     }
 
 }

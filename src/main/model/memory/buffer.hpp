@@ -3,8 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <vector>
 
-#include "model/memory/types.hpp"
+#include "model/memory/entity.hpp"
+#include "model/memory/type.hpp"
 
 namespace model
 {
@@ -12,86 +14,80 @@ namespace model
     namespace memory
     {
 
+        /**
+         * A Buffer can store a single type of entity objects.
+         * 
+         * This implementation of a generic reflist inherits
+         * the STL vector container. For more information on
+         * the available methods, refer to
+         * https://en.cppreference.com/w/cpp/container/vector/vector 
+         */
         template <typename ValueType>
-        class Buffer
+        class Buffer : public std::vector<ValueType>
         {
-        public:
 
             /* Types */
 
-            using index_type     = object_id_type;
-            using value_type     = ValueType;
-            using container_type = std::vector<value_type>;
-            using iterator       = typename container_type::iterator;
-            using const_iterator = typename container_type::const_iterator;
+            using value_type = ValueType;
 
         private:
 
-            container_type m_container;
+            // Make some accessor functions private to prevent
+            // non-continous insertions
+            using std::vector<ValueType>::insert;
+            using std::vector<ValueType>::emplace;
+            using std::vector<ValueType>::erase;
+            using std::vector<ValueType>::emplace_back;
+            using std::vector<ValueType>::resize;
+            using std::vector<ValueType>::swap;
 
         public:
 
+            /* Constructors */
+        
             Buffer() {};
 
-            size_t size() const
-            {
-                return m_container.size();
-            }
+            /* Methods */
 
-            bool empty() const
-            {
-                return m_container.empty();
-            }
-
-            void reserve(size_t n)
-            {
-                m_container.reserve(n);
-            }
-           
-            void append(value_type value)
-            {
-                assert(value.id() == m_container.size());
-                m_container.push_back(value);
-            };
-
-            bool contains(index_type index) const
-            {
-                return index < m_container.size();
-            };
-
+             /**
+             * Check if the buffer contains a specified entity.
+             * 
+             * @param value The entity
+             * @returns     True if the buffer contains the value
+             * 
+             * Time complexity: Constant
+             */
             bool contains(const value_type& value) const
             {
-                return value.id() < m_container.size();
+                return value.id() < this->size();
             };
 
-            value_type& get(index_type index)
+            /* Methods */
+           
+            void push_back(value_type value)
             {
-                return m_container.at(index);
+                assert(value.id() == this->size());
+                std::vector<value_type>::push_back(value);
             };
 
-            const value_type& get(index_type index) const
+            value_type& at(object_id_type id)
             {
-                return m_container.at(index);
-            };
-
-            iterator begin() noexcept
-            {
-                return m_container.begin();
+                return this->at(id);
             }
 
-            const_iterator begin() const noexcept
+            const value_type& at(object_id_type id) const
             {
-                return m_container.cbegin();
+                return this->at(id);
             }
 
-            iterator end() noexcept
+            value_type& at(EntityRef ref)
             {
-                return m_container.end();
+                return this->at(ref.ref());
             }
 
-            const_iterator end() const noexcept
+            const value_type& at(EntityRef ref) const
             {
-                return m_container.cend();
+                return this->at(ref.ref());
             }
 
         };

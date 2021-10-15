@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <stack>
 #include <vector>
 #include <unordered_map>
@@ -216,23 +217,39 @@ namespace mapmaker
                         m_subareas[high_ref] = {};
                     }      
 
-                    // Determine the subarea relations by comparing the bounding
-                    // boxes.
+                    // Determine the subarea relations
                     for (const id_type& low_ref : low_areas)
                     {
+                        // Find bonus candidates by checking if the lower
+                        // area bounding box is contained in the higher area
+                        // bounding box
+                        std::vector<id_type> candidates;
                         for (const id_type& high_ref : high_areas)
                         {
                             if (functions::rectangle_in_rectangle(
                                 envelopes.at(low_ref),
                                 envelopes.at(high_ref)
                             )) {
-                                m_subareas.at(high_ref).push_back(low_ref);
-                                break; // TODO check if multiple candidates
+                               candidates.push_back(high_ref);
                             }
                         }
+                        // Find the bonus by polygon-in-polygon tests
+                        for (const id_type& candidate : candidates)
+                        {
+                            //if (area_in_area(low_ref, candidate))
+                            //{
+                                m_subareas.at(candidate).push_back(low_ref);
+                                break;
+                            //}
+                        }
+                        // No bonus was found for the current area
                     }
 
-                    // TODO assert that all bonus levels have at least one territory
+                    // Verify that every higher area has at least one subarea
+                    for (const id_type& high_ref : high_areas)
+                    {
+                        assert(m_subareas.at(high_ref).size() > 0);
+                    }
 
                 }
 

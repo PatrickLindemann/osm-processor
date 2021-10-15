@@ -1,122 +1,156 @@
 #pragma once
 
+#include <algorithm>
+#include <vector>
+#include <unordered_map>
+
+#include "model/container.hpp"
+#include "model/geometry/line.hpp"
+#include "model/geometry/multipolygon.hpp"
+#include "model/geometry/rectangle.hpp"
+#include "model/graph/undirected_graph.hpp"
+#include "model/map/map.hpp"
+#include "model/map/territory.hpp"
+#include "model/map/bonus.hpp"
+#include "model/memory/area.hpp"
+#include "model/memory/buffer.hpp"
+#include "model/memory/types.hpp"
+#include "util/misc.hpp"
 
 namespace mapmaker
 {
 
-        /*
+    namespace builder
+    {
 
+        using namespace model;
+
+        template <typename T>
         class MapBuilder
         {
         public:
 
-            using point_type        = geometry::Point<double>;
-            using rectangle_type    = geometry::Rectangle<double>;
-            using polygon_type      = geometry::Polygon<double>;
-            using multipolygon_type = geometry::MultiPolygon<double>;
+            using id_type = memory::object_id_type;
 
         protected:
 
-            NodeBuffer m_node_buffer;
-            AreaBuffer m_area_buffer;
-            Graph m_graph;
-            Config m_config;
-
-
-            const geometry::Ring<double> convert_ring(const memory::Ring& ring) const
-            {
-                geometry::Ring<double> result;
-                for (const auto& node_ref : ring)
-                {
-                    memory::Node node = m_node_buffer.get(node_ref);
-                    result.push_back(node.point());
-                }
-                return result;
-            }
+            const DataContainer<T>& m_data;
             
+            std::vector<map::Territory<T>> m_territories;
+            std::vector<map::Territory<T>> m_bonuses;
+
         public:
 
-            Builder(
-                AreaBuffer& area_buffer,
-                NodeBuffer& node_buffer,
-                graph::UndirectedGraph& graph,
-                Config& config
-            ) : m_area_buffer(area_buffer),
-                m_node_buffer(node_buffer),
-                m_graph(graph),
-                m_config(config)
-            {
+            MapBuilder(const DataContainer<T>& data) : m_data(data) {};
 
-            };
-
-            rectangle_type bounds() const
+            map::Map<T> map()
             {
-                point_type min{ -DBL_MAX, -DBL_MAX };
-                point_type max{  DBL_MAX,  DBL_MAX };
-                rectangle_type result{ max, min };
-                for (const auto& node : m_node_buffer)
-                {
-                    result.extend(node.point());
-                }
-                return result;
+                return map::Map<T>{
+                    m_data.name,
+                    m_data.width,
+                    m_data.height,
+                    m_territories,
+                    m_bonuses
+                };
             }
 
-            map::Map build()
+        protected:
+
+            std::string get_random_hex_color()
             {
+                return util::hsl_to_hex(rand() % 361, 1, 1);
+            }
 
+        public:
 
+            void run()
+            {
+                // Seed the time
+                srand(time(NULL));
 
-                // 2. Assemble boundaries
-
-                // 1. Assemble Boundaries (territories & bonus levels)
-                // 2. Create relationships from graph -> Two 
-                // 3. 
-                std::vector<map::Boundary> boundaries;
-
-                // TODO before assembly: Filter components
-
-                size_t id = 1;
-                for (const auto& area : m_area_buffer)
+                // Prepare the id maps for territories and bonuses
+                std::unordered_map<id_type, id_type> ids;
+                size_t t_id = 0;
+                size_t b_id = 0;
+                for (const memory::Area<T>& area : m_data.areas)
                 {
-                    // Assemble geometry
-                    multipolygon_type geometry;
-                    for (const auto& outer_ring : area.outer_rings())
+                    if (area.level() == m_data.territory_level)
                     {
-                        polygon_type polygon;
-                        polygon.outer = build_ring(outer_ring);
-                        for (const auto& inner_ring : area.inner_rings(outer_ring))
-                        {
-                            polygon.inners.push_back(build_ring(inner_ring));
-                        }
-                        geometry.polygons.push_back(polygon);
-                    }
-                    // Determine the area type and create a new boundary
-                    map::Boundary::Type type;
-                    if (area.level() == m_config.territory_level)
-                    {
-                        type = model::map::Boundary::TERRITORY;
+                        ids[area.id()] = t_id;
+                        ++t_id;
                     }
                     else
                     {
-                        type = model::map::Boundary::BONUS;
+                        ids[area.id()] = b_id;
+                        ++b_id;
                     }
-                    point_type center = algorithm::center(geometry);
-                    boundaries.push_back(map::Boundary{
-                        id,
-                        type,
-                        area.name(),
-                        area.level(),
-                        geometry,
-                        center
-                    });
-                    ++id;
                 }
 
-                return map::Map{ width, height, boundaries };
+                // Re-Index and cache neighbor and neighbor lists
+                std::unordered_map<id_type, std::vector<id_type>> neighbors;
+                std::unordered_map<id_type, std::vector<id_type>> children;
+                for (const memory::Area<T>& area : m_data.areas)
+                {
+                    if (area.level() == m_data.territory_level)
+                    {
+                        // Map neighbor ids
+                        std::vector<id_type> adjacents = m_data.neighbors.adjacents(area.id());
+                        for (size_t i = 0; i < adjacents.size(); i++)
+                        {
+                            adjacents.at(i) = ids.at(adjacents.at(i));
+                        }
+                        neighbors[area.id()] = adjacents;
+                    }
+                    else
+                    {
+                        // Map subarea ids
+                        std::vector<id_type> subareas = m_data.subareas.at(area.id());
+                        for (size_t i = 0; i < subareas.size(); i++)
+                        {
+                            subareas.at(i) = ids.at(subareas.at(i));
+                        }
+                        children[area.id()] = subareas;
+                    }
+                }
+
+                // Determine minimum bonus level
+                unsigned short min_bonus_level = *std::min_element(m_data.bonus_levels);
+
+                // Assemble territories and bonuses
+                for (const memory::Area<T>& area : m_data.areas)
+                {
+                    if (area.level() == m_data.territory_level)
+                    {
+                        // Create territory
+                        map::Territory<T> territory{
+                            ids.at(area.id()),
+                            area.name(),
+                            m_data.centerpoints.at(area.id()),
+                            neighbors.at(area.id(),
+                            m_data.geometries.at(area.id())
+                        };
+                        m_territories.push_back(territory);
+                    }
+                    else
+                    {
+                        // Calculate number of 
+                        // Create regular bonus
+                        map::Bonus<T> bonus{
+                            m_bonuses.size(),
+                            area.name(),
+                            0,
+                            get_random_hex_color(),
+                            area.level() != min_bonus_level,
+                            children.at(area.id())
+                        };
+                    }
+                }
+
+
             }
             
         };
 
-        */
+    }
 
 }

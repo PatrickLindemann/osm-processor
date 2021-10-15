@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <utility>
 
 #include "model/geometry/point.hpp"
 
@@ -16,80 +16,52 @@ namespace model
         template <typename T>
         class Segment
         {
-        public:
-
-            /* Types */
-
-            using point_type     = Point<T>;
-            using container_type = std::array<point_type, 2>;
-            using iterator       = typename container_type::iterator;
-            using const_iterator = typename container_type::const_iterator;
 
             /* Members */
 
-            container_type points;
+            std::pair<Point<T>, Point<T>> points;
 
-            /* Constructor */
+        public:
 
-            Segment(point_type first, point_type last) : points({ first, last }) {};
+            /* Constructors */
 
-            /* Methods */
+            Segment(Point<T> first, Point<T> last) : points(first, last) {};
+            Segment(std::pair<T, T> segment) : points(segment) {};
 
-            const bool valid() const
+            /* Accessors */
+
+            Point<T>& first()
             {
-                return points.size() == 2;
-            } 
-
-            const bool empty() const
-            {
-                return points.empty();
+                return points.first;
             }
 
-            size_t size() const
+            const Point<T>& first() const
             {
-                return points.size();
+                return points.first;
             }
 
-            const point_type& first() const
+            Point<T>& last()
             {
-                return points[0];
+                return points.second;
             }
 
-            const point_type& last() const
+            const Point<T>& last() const
             {
-                return points[1];
+                return points.second;
             }
 
-            point_type& at(size_t index)
-            {
-                return points.at(index);
-            }
-            
-            const point_type& at(size_t index) const
-            {
-                return points.at(index);
-            }
-
-            point_type& operator[](const size_t index)
-            {
-                return points[index];
-            }
-
-            const point_type& operator[](const size_t index) const
-            {
-                return points[index];
-            }
+            /* Operators */
 
             bool operator==(const Segment<T>& other) const
             {
-                return (points[0] == other.first() && points[1] == other.last())
-                    || (points[0] == other.last() && points[1] == other.first());
+                return (points.first == other.first() && points.second == other.last())
+                    || (points.first == other.last() && points.second == other.first());
             }
 
             bool operator!=(const Segment<T>& other) const
             {
-                return (points[0] != other.first() || points[1] != other.last())
-                    && (points[0] != other.last() || points[1] != other.first());
+                return (points.first != other.first() || points.second != other.last())
+                    && (points.first != other.last() || points.second != other.first());
             }
 
         };

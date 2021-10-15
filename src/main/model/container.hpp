@@ -1,28 +1,37 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
-#include <osmium/memory/buffer.hpp>
-#include <osmium/osm/types.hpp>
-#include <osmium/io/file_format.hpp>
-#include <osmium/io/file_compression.hpp>
-
 #include <boost/filesystem/path.hpp>
 
+#include <osmium/io/file_compression.hpp>
+#include <osmium/io/file_format.hpp>
+#include <osmium/memory/buffer.hpp>
+#include <osmium/osm/types.hpp>
+
+#include "model/geometry/multipolygon.hpp"
 #include "model/geometry/rectangle.hpp"
-#include "model/memory/node.hpp"
-#include "model/memory/types.hpp"
-#include "model/memory/way.hpp"
-#include "model/memory/relation.hpp"
+#include "model/geometry/segment.hpp"
+#include "model/graph/undirected_graph.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
-#include "model/graph/undirected_graph.hpp"
+#include "model/memory/node.hpp"
+#include "model/memory/relation.hpp"
+#include "model/memory/way.hpp"
+#include "model/types.hpp"
 
 namespace model
 {
 
-    template <typename T>
+    using namespace model::memory;
+    using namespace model::geometry;
+
+    /**
+     * A container for file metadata and other
+     * generic file information.
+     */
     struct InfoContainer
     {
         // File information
@@ -37,15 +46,12 @@ namespace model
         size_t relations;
         
         // Bounding Box information
-        geometry::Rectangle<T> bounds { {0, 0}, {0, 0} };
+        Rectangle<double> bounds;
 
         // Boundary information
-        size_t boundaries;
-        std::map<std::string, size_t> levels;
+        size_t boundary_count;
+        std::map<std::string, size_t> level_counts;
 
-        /**
-         * @param stream
-         */
         template <typename StreamType>
         void print(StreamType& stream) const
         {
@@ -62,9 +68,9 @@ namespace model
                 << "  " << "Min: (" << bounds.min.x << ", " << bounds.min.y << ")" << '\n' 
                 << "  " << "Max: (" << bounds.max.x << ", " << bounds.max.y << ")" << '\n' 
                 << "Boundaries: " << '\n'
-                << "  " << "Total: " << boundaries << '\n'
+                << "  " << "Total: " << boundary_count << '\n'
                 << "  " << "Level Distribution: " << '\n';
-            for (auto& [level, count] : levels)
+            for (auto& [level, count] : level_counts)
             {
                 stream << "   L" << level << ": " << count << '\n';
             }
@@ -74,27 +80,24 @@ namespace model
     };
 
     /**
-     * 
+     * A container for file contents.
      */
-    template<typename T>
     struct DataContainer
     {
-        using id_type = memory::object_id_type;
-        using component_type = unsigned long;
+        // General information
+        std::string name;
+        width_type width;
+        height_type height;
+        level_type territory_level;
+        std::vector<level_type> bonus_levels;
 
-        // Primitive buffers
-        memory::Buffer<memory::Node<T>> nodes;
-        memory::Buffer<memory::Way<T>> ways;
-        memory::Buffer<memory::Relation<T>> relations;
+        // OSM data buffers
+        Buffer<Node> nodes;
+        Buffer<Way> ways;
+        Buffer<Relation> relations;
+        Buffer<Area> areas;
 
-        // Area buffer
-        memory::Buffer<memory::Area<T>> areas;
-
-        // Relation containers
-        graph::UndirectedGraph neighbors;
-        std::unordered_map<component_type, std::vector<id_type>> components;
-        
-        // Misc
+        // Incomplete object buffers
         std::vector<osmium::object_id_type> incomplete_relations;
     };
 

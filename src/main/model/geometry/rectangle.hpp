@@ -8,79 +8,80 @@ namespace model
     namespace geometry
     {
     
-        /**
-         * 
-         */
         template <typename T>
         class Rectangle
         {
-        public:
-
-            /* Types */
-
-            using point_type = Point<T>;
 
             /* Members */
             
-            point_type min, max;
+            Point<T> m_min;
+            Point<T> m_max;
+
+        public:
 
             /* Constructors */
-        
-            Rectangle(point_type min, point_type max) : min(min), max(max) {};
+
+            Rectangle() : m_min(0, 0), m_max(0, 0) {};
+            Rectangle(T min_x, T min_y, T max_x, T max_y) : m_min(min_x, min_y), m_max(max_x, max_y) {};
+            Rectangle(Point<T> min, Point<T> max) : m_min(min), m_max(max) {};
 
             /* Accessors */
 
-            const point_type bottom_left() const
+            Point<T>& min()
             {
-                return point_type{ this->min };
+                return m_min;
             }
 
-            const point_type top_left() const
+            const Point<T>& min() const
             {
-                return point_type{ this->min.x, this->max.y };
+                return m_min;
             }
 
-            const point_type top_right() const
+            Point<T>& max()
             {
-                return point_type{ this->max };
+                return m_max;
             }
 
-            const point_type bottom_right() const
+            const Point<T>& max() const
             {
-                return point_type{ this->max.x, this->min.y };
+                return m_max;
             }
 
-            /* Misc */
+            /* Methods */
 
-            const bool valid() const
+            bool valid() const
             {
-                return this->min.x <= this->max.x && this->min.y <= this->max.y; 
+                return m_min.x() <= m_max.x() && m_min.y() <= m_max.y(); 
             }
     
-            const double width() const
+            double width() const
             {
-                return this->max.x -  this->min.x;
+                return m_max.x() -  m_min.x();
             }
 
-            const double height() const
+            double height() const
             {
-                return this->max.y - this->min.y;
+                return m_max.y() - m_min.y();
             }
 
-            Rectangle<T>& extend(const point_type& p) {
-                if (p.x < this->min.x) this->min.x = p.x;
-                if (p.y < this->min.y) this->min.y = p.y;
-                if (p.x > this->max.x) this->max.x = p.x;
-                if (p.y > this->max.y) this->max.y = p.y;
-                return *this;
+            Point<T> top_left() const
+            {
+                return m_min;
             }
 
-            Rectangle<T>& extend(const Rectangle<T>& other) {
-                if (other.min.x < this->min.x) this->min.x = other.min.x;
-                if (other.min.y < this->min.y) this->min.y = other.min.y;
-                if (other.max.x > this->max.x) this->max.x = other.max.x;
-                if (other.max.y > this->max.y) this->max.y = other.max.y;
-                return *this;
+            Point<T> top_right() const
+            {
+                return Point<T>{ m_max.x(), m_min.y() };
+            }
+
+            Point<T> bottom_left() const
+            {
+                return Point<T>{ m_min.x(), m_max.y() };
+            }
+
+            Point<T> bottom_right() const
+            {
+                return m_max;
             }
 
         };

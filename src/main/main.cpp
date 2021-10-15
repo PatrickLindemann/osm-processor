@@ -13,15 +13,17 @@
 
 #include <osmium/memory/buffer.hpp>
 
-#include "model/container.hpp"
-#include "model/graph/undirected_graph.hpp"
-#include "mapmaker/compressor.hpp"
-#include "mapmaker/assembler.hpp"
-#include "mapmaker/inspector.hpp"
-#include "mapmaker/projector.hpp"
-#include "functions/project.hpp"
 #include "io/reader.hpp"
 #include "io/writer.hpp"
+#include "functions/project.hpp"
+#include "mapmaker/assembler.hpp"
+#include "mapmaker/builder.hpp"
+#include "mapmaker/compressor.hpp"
+#include "mapmaker/connector.hpp"
+#include "mapmaker/converter.hpp"
+#include "mapmaker/inspector.hpp"
+#include "mapmaker/projector.hpp"
+#include "model/container.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -29,24 +31,19 @@ namespace po = boost::program_options;
 using Clock = std::chrono::high_resolution_clock;
 using time_point = std::chrono::time_point<std::chrono::_V2::system_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>;
 
-int main(int argc, char* argv[])
-{      
-    fs::path input;
-    fs::path output;
-    unsigned short territory_level;
-    std::vector<unsigned short> bonus_levels;
-    unsigned int width;
-    unsigned int height;
-    double epsilon;
-    bool verbose;
-    bool benchmark;
+fs::path input;
+fs::path output;
+unsigned short territory_level;
+std::vector<unsigned short> bonus_levels;
+unsigned int width;
+unsigned int height;
+double epsilon;
+bool verbose;
+bool benchmark;
 
-    // Get the directory of the executable
-    const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
-
-    // Create the parameters and descriptions
-    po::options_description desc("Program options");
-    desc.add_options()
+void add_options(po::options_description& description)
+{
+    description.add_options()
         ("input", po::value<fs::path>(&input),
             "Sets the input file path.\nAllowed file formats: .osm, .pbf")
         ("output,o", po::value<fs::path>(&output),
@@ -69,6 +66,29 @@ int main(int argc, char* argv[])
         ("benchmark", po::bool_switch(&benchmark)->default_value(false), "Enables benchmark mode.")
         ("verbose", po::bool_switch(&verbose)->default_value(false), "Enables verbose logging.")
         ("help,h", "Shows this help message.");
+}
+
+template<typename StreamType>
+void print_title(StreamType& stream)
+{
+    // Print the title
+    stream << ""
+           << " _       __                                     __  ___                            __            "        << '\n'
+           << "| |     / /___ __________  ____  ____  ___     /  |/  /___ _____  ____ ___  ____ _/ /_____  _____"        << '\n'
+           << "| | /| / / __ `/ ___/_  / / __ \\/ __ \\/ _ \\   / /|_/ / __ `/ __ \\/ __ `__ \\/ __ `/ //_/ _ \\/ ___/"  << '\n'
+           << "| |/ |/ / /_/ / /    / /_/ /_/ / / / /  __/  / /  / / /_/ / /_/ / / / / / / /_/ / ,< /  __/ /    "        << '\n'
+           << "|__/|__/\\__,_/_/    /___/\\____/_/ /_/\\___/  /_/  /_/\\__,_/ .___/_/ /_/ /_/\\__,_/_/|_|\\___/_/     "  << '\n'
+           << "                                                        /_/                                      "        << std::endl;
+}
+
+int main(int argc, char* argv[])
+{      
+    // Get the directory of the executable
+    const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
+
+    // Create the parameters and descriptions
+    po::options_description desc("Program options");
+    add_options(desc);
 
     // Parameter positions
     po::positional_options_description p;
@@ -87,6 +107,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    // Validate inputs
     // Verify that input was provided
     if (input.string() == "")
     {
@@ -171,29 +192,26 @@ int main(int argc, char* argv[])
         std::cout << "[Error] " << "Specified epsilon " << epsilon << " is invalid. The compression level has to be a value greater than 0." << std::endl;
         return 1;
     }
-    
-    // Print the title
-    std::cout << ""
-                << " _       __                                     __  ___                            __            "        << '\n'
-                << "| |     / /___ __________  ____  ____  ___     /  |/  /___ _____  ____ ___  ____ _/ /_____  _____"        << '\n'
-                << "| | /| / / __ `/ ___/_  / / __ \\/ __ \\/ _ \\   / /|_/ / __ `/ __ \\/ __ `__ \\/ __ `/ //_/ _ \\/ ___/"  << '\n'
-                << "| |/ |/ / /_/ / /    / /_/ /_/ / / / /  __/  / /  / / /_/ / /_/ / / / / / / /_/ / ,< /  __/ /    "        << '\n'
-                << "|__/|__/\\__,_/_/    /___/\\____/_/ /_/\\___/  /_/  /_/\\__,_/ .___/_/ /_/ /_/\\__,_/_/|_|\\___/_/     "  << '\n'
-                << "                                                        /_/                                      "        << std::endl;
+
+    print_title(std::cout);
 
     // TODO: interactive mode
 
     // Create the vector for time measurments
     std::vector<time_point> times;
 
-    /* Read the file headers */
+    // Prepare the data containers
     model::InfoContainer<double> info; 
+    model::DataContainer<double> data;
+    data.territory_level = territory_level;
+    data.bonus_levels = bonus_levels;
+
+    /* Read the file headers */
     io::reader::get_info(info, input_path.string());
     info.print(std::cout);
 
     /* Read the file contents and extract the nodes, ways and relations */
     std::cout << "Reading file data from file \"" << input_path << "\"..." << std::endl;
-    model::DataContainer<double> data;
     io::reader::get_data(data, input_path.string(), territory_level, bonus_levels);
     if (!data.incomplete_relations.empty()) {
         std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
@@ -209,7 +227,7 @@ int main(int argc, char* argv[])
     {
         std::cout << "Compressing ways... " << std::endl;
         size_t nodes_before = data.nodes.size();
-        mapmaker::compressor::Compressor compressor{data.nodes, data.ways, epsilon};
+        mapmaker::compressor::Compressor compressor{ data.nodes, data.ways, epsilon };
         compressor.run();
         size_t nodes_after = data.nodes.size();
         std::cout << "Compressed ways successfully." << '\n'
@@ -221,19 +239,25 @@ int main(int argc, char* argv[])
     /* Normalize the extracted areas */
     std::cout << "Assembling areas from relations..." << std::endl;    
     mapmaker::assembler::Assembler<double> assembler{ data.nodes, data.ways, data.relations };
-    data.areas = assembler.build();
+    assembler.run();
+    data.areas = assembler.areas();
     std::cout << "Assembled areas successfully." << '\n'
                 << "Results: " << '\n'
                 << "  Relations (before): " << std::to_string(data.relations.size()) << '\n'
                 << "  Areas (after):      " << std::to_string(data.areas.size()) << std::endl;
 
     /* Retrieve the relations for the areas */
-    std::cout << "Calculating area relations (neighbors, components, subareas)... " << std::endl;
+    std::cout << "Calculating area relations (neighbors, components, subareas)..." << std::endl;
     mapmaker::inspector::Inspector<double> inspector{ data.nodes, data.ways, data.areas };
     inspector.run();
     data.neighbors = inspector.neighbors();
     data.components = inspector.components();
+    data.subareas = inspector.subareas();
     std::cout << "Calculated relations sucessfully. " << std::endl;
+
+    /* Connect islands */
+    std::cout << "Connecting islands..." << std::endl;
+    std::cout << "Created " << 0 << " new connections." << std::endl;
 
     /* Apply the map projections */
     std::cout << "Applying the map projections... " << std::endl;
@@ -248,7 +272,8 @@ int main(int argc, char* argv[])
     std::cout << "Scaling the map... " << std::endl;
     geometry::Rectangle<double> bounds = projector.bounds();
     // Check if a dimension is set to auto and calculate its value
-    // depending on the map bounds    if (width == 0 || height == 0)
+    // depending on the map bounds
+    if (width == 0 || height == 0)
     {
         if (width == 0)
         {
@@ -259,6 +284,8 @@ int main(int argc, char* argv[])
             height = bounds.height() / bounds.width() * width;
         }
     }
+    data.width = width;
+    data.height = height;
     // Apply the scaling projections
     // Scale the map according to the dimensions
     projector.apply(functions::UnitProjection<double>{
@@ -271,12 +298,22 @@ int main(int argc, char* argv[])
     std::cout << "Scaled the map sucessfully. The output size will be " << width << "x" << height << "px" << std::endl;
 
     // Assemble the geometries
-    std::cout << "Building the boundary geometries... " << std::endl;
+    std::cout << "Converting areas to geometries... " << std::endl;
+    mapmaker::converter::GeometryConverter converter{ data.nodes, data.areas };
+    converter.run();
+    data.geometries = converter.geometries();
     std::cout << "Built geometries successfully. " << std::endl;
 
     // Calculate the centerpoints
     std::cout << "Calculating centerpoints... " << std::endl;
     std::cout << "Calculated centerpoints successfully. " << std::endl;
+
+    // Build the final map
+    std::cout << "Building the map... " << std::endl;
+    mapmaker::builder::MapBuilder builder{ data };
+    builder.run();
+    map::Map map = builder.map();
+    std::cout << "Built the map sucessfully." << std::endl;
 
     // Export the map data as .svg file
     std::cout << "Exporting map data..." << std::endl;

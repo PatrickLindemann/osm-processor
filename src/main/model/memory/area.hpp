@@ -1,12 +1,13 @@
 #pragma once
 
+#include <cassert>
 #include <string>
 #include <vector>
-#include <unordered_set>
 #include <unordered_map>
 
 #include "model/memory/entity.hpp"
 #include "model/memory/ring.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
@@ -14,115 +15,133 @@ namespace model
     namespace memory
     {
 
-        template <typename T>
+        class OuterRing : public Ring {};
+        class InnerRing : public Ring {};
+
+        /**
+         * An Area is a non-native OSMObject that is used to
+         * describe the geometry of an boundary or multipolygon
+         * relation. An area can have multiple outer rings (exclaves)
+         * as well as inner rings (holes).
+         */
         class Area : public Entity
         {
-        public:
+
+            /* Types */
+
+            using outers_type = std::vector<OuterRing>;
+            using inners_type = std::vector<InnerRing>;
+            using ring_map_type = std::unordered_map<object_id_type, std::vector<object_id_type>>;
+
+        protected:
 
             /**
-             * 
+             * The area name
              */
-            using ring_type = Ring<T>;
+            std::string m_name;
 
             /**
-             * 
+             * The area admin_level
              */
-            using outers_container = std::vector<ring_type>;
+            level_type m_level;
 
             /**
-             * 
+             * The outer ring container.
              */
-            using inners_container = std::vector<ring_type>;
+            outers_type m_outers;
 
+            /**
+             * The inner ring container.
+             */
+            inners_type m_inners;
 
             /**
              * The index map that saves which inner rings belong to which outer
              * rings of the area.
              */
-            using index_map_type = std::unordered_map<id_type, std::vector<id_type>>;
-
-            /**
-             * The container that stores all referenced ways for this area.
-             * This is needed to determine neighborships between areas.
-             */
-            using reference_container = std::unordered_set<id_type>;
-
-        protected:
-
-            std::string m_name;
-            unsigned short m_level;
-            outers_container m_outers;
-            inners_container m_inners;
-            index_map_type m_index_map;
-            reference_container m_way_references;
+            ring_map_type m_ring_map;
 
         public:
 
-            Area(id_type id) : Entity(id) {};
-            Area(id_type id, std::string name, unsigned short level)
+            /* Constructors */
+
+            Area(object_id_type id, std::string name, unsigned short level)
             : Entity(id), m_name(name), m_level(level) {};
 
+            /* Accessors */
 
-            bool empty() const
-            {
-                return m_outers.empty();
-            }
-
-            bool has_exclaves() const
-            {
-                return m_outers.size() > 1;
-            }
-
-            const std::string& name() const
+            const std::string& name() const noexcept
             {
                 return m_name;
             }
 
-            const unsigned short& level() const
+            const level_type& level() const noexcept
             {
                 return m_level;
             }
 
-            const outers_container& outer_rings() const
+            const outers_type& outer_rings() const noexcept
             {
                 return m_outers;
             }
 
-            const inners_container inner_rings(const ring_type& outer) const
+            /**
+             * Access the inner rings of a specified outer ring.
+             * 
+             * @param outer The outer ring
+             * @returns     All inner ring contained in the outer
+             *              ring
+             */
+            const inners_type inner_rings(const OuterRing& outer) const noexcept
             {
-                inners_container result{};
-                for (const id_type& id : m_index_map.at(outer.id()))
+                inners_type inners;
+                for (const object_id_type& outer_ref : m_ring_map.at(outer.id()))
                 {
-                    result.push_back(m_inners.at(id));
+                    inners.push_back(m_inners.at(outer_ref));
                 }
-                return result;
+                return inners;
             }
 
-            const reference_container way_references() const
+            /* Methods */
+            
+            /**
+             * Check if the area has exclaves, i.e. more than one
+             * outer ring.
+             */
+            bool has_exclaves() const noexcept
             {
-                return m_way_references;
+                return m_outers.size() > 1;
             }
 
-            void add_outer_ring(const ring_type& outer)
+            /**
+             * Add an outer ring to the area.
+             * 
+             * @param outer The outer ring
+             */
+            void add_outer(const OuterRing& outer)
             {
                 assert(outer.id() == m_outers.size());
                 m_outers.push_back(outer);
-                m_index_map[outer.id()] = {};
+                m_ring_map[outer.id()] = {};
             }
 
-            void add_inner_ring(const ring_type& outer, const ring_type& inner)
+            /**
+             * Insert an inner ring, which is contained in a specified
+             * outer ring, to the area.
+             * 
+             * @param outer The outer ring in which the inner lies in
+             * @param inner The inner ring
+             */
+            void add_inner(const OuterRing& outer, const InnerRing& inner)
             {
                 assert(inner.id() == m_inners.size());
                 m_inners.push_back(inner);
-                m_index_map.at(outer.id()).push_back(inner.id());
-            }
-
-            void add_way_reference(const id_type& way_ref)
-            {
-                m_way_references.insert(way_ref);
+                m_ring_map.at(outer.id()).push_back(inner.id());
             }
 
         };
+        
+        class AreaRef : public EntityRef {};
 
     }
 

@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <exception>
 
+#include "model/graph/edge.hpp"
 #include "model/graph/graph.hpp"
+#include "model/graph/vertex.hpp"
 
 namespace model
 {
@@ -34,21 +36,24 @@ namespace model
              */
             std::pair<size_t, size_t> size() const override
             {
-                return std::make_pair(m_vertices, m_edges.size() / 2);
+                return std::make_pair(m_vertices.size(), m_edges.size() / 2);
             }
 
-            protected:
+        protected:
 
             /**
              * Creates a reversed edge by swapping the source and
              * target vertices.
+             * 
+             * @param edge The edge
+             * @returns    The reversed edge
              */
             edge_type reverse(const edge_type& edge) const
             {
                 return edge_type{ edge.second, edge.first };
             }
 
-            public:
+        public:
 
             /* Edge methods */
 
@@ -65,23 +70,23 @@ namespace model
             /**
              * Inserts an edge into the graph. 
              * 
-             * @param edge The edge as <vertex, vertex> pair.
+             * @param edge The edge as <vertex, vertex> pair
              * 
              * Time complexity: Logarithmic
              */
             void insert_edge(edge_type edge) override
             {
+                m_vertices.insert(edge.first);
+                m_vertices.insert(edge.second);
                 m_edges.insert(edge);
                 m_edges.insert(reverse(edge));
-                m_vertices = std::max(m_vertices, edge.first + 1);
-                m_vertices = std::max(m_vertices, edge.second + 1);
             };
 
             /**
              * Checks if an edge exists in the graph.
              * 
-             * @param edge The edge as <vertex, vertex> pair.
-             * @returns true If the edge exists
+             * @param edge  The edge as <vertex, vertex> pair
+             * @returns     True If the edge exists
              * 
              * Time complexity: Logarithmic
              */
@@ -95,8 +100,8 @@ namespace model
             /**
              * Retrieves the lower edge offset for a specified vertex.
              * 
-             * @param vertex The vertex.
-             * @returns An iterator to the lower edge bound.
+             * @param vertex The vertex
+             * @returns      An iterator to the lower edge bound
              * 
              * Time complexity: Logarithmic
              */
@@ -110,8 +115,8 @@ namespace model
             /**
              * Retrieves upper edge offset for a specified vertex.
              * 
-             * @param vertex The vertex.
-             * @returns An iterator to the upper edge bound.
+             * @param vertex The vertex
+             * @returns      An iterator to the upper edge bound
              * 
              * Time complexity: Logarithmic
              */
@@ -128,8 +133,8 @@ namespace model
              * Returns the degree (number of outgoing edges) for a specified
              * vertex in the graph.
              * 
-             * @param Vertex The vertex.
-             * @throws std::out_of_range If the vertex does not exist.
+             * @param Vertex The vertex
+             * @throws       std::out_of_range If the vertex does not exist
              * 
              * Time complexity: Logarithmic
              */
@@ -152,8 +157,8 @@ namespace model
              * Retrieves the adjacending vertices for a specified vertex
              * in the graph.
              * 
-             * @param Vertex The vertex.
-             * @throws std::out_of_range If the vertex does not exist.
+             * @param Vertex The vertex
+             * @throws       std::out_of_range If the vertex does not exist
              * 
              * Time complexity: Logarithmic
              */

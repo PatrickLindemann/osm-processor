@@ -11,29 +11,43 @@ namespace model
     namespace geometry
     {
 
-        /**
-         * 
-         */
         template <typename T>
         class Polygon
         {
-        public:
-
-            /* Types */
-
-            using point_type   = Point<T>;
-            using ring_type    = Ring<T>;
-
             /* Members */
 
-            ring_type outer;
-            std::vector<ring_type> inners;
+            Ring<T> m_outer;
+            std::vector<Ring<T>> m_inners;
+
+        public:
 
             /* Constructors */
 
             Polygon() {};
-            Polygon(ring_type& outer) : outer(outer) {};
-            Polygon(ring_type& outer, std::vector<ring_type>& inners) : outer(outer), inners(inners) {};
+            Polygon(Ring<T> outer) : m_outer(outer) {};
+            Polygon(Ring<T> outer, std::vector<Ring<T>> inners) : m_outer(outer), m_inners(inners) {};
+
+            /* Accessors */
+
+            Ring<T>& outer()
+            {
+                return m_outer;
+            }
+
+            const Ring<T>& outer() const
+            {
+                return m_outer;
+            }
+
+            Ring<T>& inners()
+            {
+                return m_inners;
+            }
+
+            const Ring<T>& inners() const
+            {
+                return m_inners;
+            }
 
         };
 

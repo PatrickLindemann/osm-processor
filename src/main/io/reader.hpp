@@ -34,14 +34,9 @@ namespace io
 
         /**
          * 
-         * @param file_path
-         * @returns
          */
-        template <typename T>
-        void get_info(
-            InfoContainer<T>& result,
-            const std::string& file_path
-        ) {
+        InfoContainer get_info(const std::string& file_path)
+        {
             // The Reader is initialized here with an osmium::io::File, but could
             // also be directly initialized with a file name.
             osmium::io::File input_file{ file_path };
@@ -57,7 +52,7 @@ namespace io
 
             // Create the BoundsHandler that determines the bounds of the
             // input excerpt
-            handler::BoundsHandler<T> bounds_handler;
+            handler::BoundsHandler bounds_handler;
 
             // Apply the counters to the input file
             osmium::apply(reader, count_handler, level_counter, bounds_handler);
@@ -67,7 +62,7 @@ namespace io
             reader.close();
 
             // Return results
-            result = {
+            return {
                 file_path,
                 input_file.format(),
                 input_file.compression(),
@@ -90,12 +85,10 @@ namespace io
         /**
          * 
          */
-        template<typename T>
-        void get_data(
-            DataContainer<T>& result,
-            const std::string file_path,
-            unsigned short territory_level,
-            std::vector<unsigned short> bonus_levels
+        DataContainer get_data(
+            const std::string& file_path,
+            level_type territory_level,
+            std::vector<level_type> bonus_levels
         ) {   
             /* First pass */
 
@@ -103,7 +96,7 @@ namespace io
     
             // Initialize the Converter. Its job is to collect all
             // relations and member ways needed for each relation.
-            handler::ConvertHandler<T> convert_handler{ territory_level, bonus_levels };
+            handler::ConvertHandler convert_handler{ territory_level, bonus_levels };
 
             // Pass through file for the first time and feed relations to the
             // multipolygon manager
@@ -123,19 +116,20 @@ namespace io
             osmium::apply(reader, location_handler, convert_handler.handler());
 
             // Save results
-            result = {
-                convert_handler.nodes(),
-                convert_handler.ways(),
-                convert_handler.relations()
-            };
+            DataContainer data;
+            data.nodes = convert_handler.nodes();
+            data.ways = convert_handler.ways();
+            data.relations = convert_handler.relations();
 
             // If there were multipolgyon relations in the input, but some of their
             // members are not in the input file (which often happens for extracts),
             // mark them as incomplete in the result data.
             std::vector<osmium::object_id_type> incomplete_relations_ids;
             convert_handler.for_each_incomplete_relation([&](const osmium::relations::RelationHandle& handle){
-                result.incomplete_relations.push_back(handle->id());
+                data.incomplete_relations.push_back(handle->id());
             });
+
+            return data;
         }
 
     }

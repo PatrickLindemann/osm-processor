@@ -3,6 +3,7 @@
 #include "model/geometry/point.hpp"
 #include "model/geometry/segment.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/geometry/polygon.hpp"
 
 namespace functions
 {
@@ -30,6 +31,14 @@ namespace functions
              && point.y >= std::min(first.y, last.y));
     }
     
+    template <typename T>
+    inline bool point_in_polygon(
+        const geometry::Point<T>& point,
+        const geometry::Polygon<T>& polygon
+    ) {
+        
+    }
+
     /**
      * Check if a point lies on a specified segment.
      * 

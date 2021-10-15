@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cmath>
-
 #include "model/geometry/point.hpp"
 
 namespace model
@@ -16,32 +14,49 @@ namespace model
         template <typename T>
         class Circle
         {
-        public:
-
-            /* Types */
-
-            using point_type = Point<T>;
-
             /* Members */
 
-            point_type center;
-            double radius;
+            Point<T> m_center;
+            T m_radius;
+
+    	public:
 
             /* Constructors */
 
-            Circle(point_type center) : center(center) {};
-            Circle(point_type center, double radius) : center(center), radius(radius) {};
+            Circle(Point<T> center, T radius) : m_center(center), m_radius(radius) {};
 
-            /* Misc */
+            /* Accessors */
 
-            const bool valid() const
+            Point<T>& center()
             {
-                return radius >= 0;
+                return m_center;
             }
 
-            const double diameter() const
+            const Point<T>& center() const
             {
-                return radius * 2;
+                return m_center;
+            }
+
+            T& radius()
+            {
+                return m_radius;
+            }
+
+            const T& radius() const
+            {
+                return m_radius;
+            }
+
+            /* Methods */
+
+            bool valid() const
+            {
+                return m_radius > 0;
+            }
+
+            T diameter() const
+            {
+                return m_radius * 2;
             }
 
         };

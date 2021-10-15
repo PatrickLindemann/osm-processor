@@ -5,61 +5,107 @@
 #include <string>
 #include <vector>
 
-#include "model/map/boundary.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/multipolygon.hpp"
+#include "model/map/bonus.hpp"
+#include "model/map/territory.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
 
     namespace map
     {
-
+        
         /**
          * 
          */
         class Map
         {
-        public:
-
-            /* Types */
-
-            using point_type = geometry::Point<double>;
-
-        protected:
 
             /* Members */
 
-            int m_width;
-            int m_height;
-            std::vector<map::Boundary> m_boundaries;
-            // std::set<long, long> neighbors;
+            /**
+             * 
+             */
+            std::string m_name;
+
+            /**
+             * 
+             */
+            width_type m_width;
+
+            /**
+             * 
+             */
+            height_type m_height;
+
+            /**
+             * 
+             */
+            std::vector<Territory> m_territories;
+
+            /**
+             * 
+             */
+            std::vector<Bonus> m_bonuses;
 
         public:
 
-            /* Constructor */
+            /* Constructors */
 
-            Map(
-                int width,
-                int height,
-                std::vector<map::Boundary> & boundaries
-            ) : m_width(width), m_height(height), m_boundaries(boundaries) {};
+            Map() {};
 
             /* Accessors */
 
-            const int width() const
+            std::string& name()
+            {
+                return m_name;
+            }
+
+            const std::string& name() const
+            {
+                return m_name;
+            }
+
+            width_type& width()
             {
                 return m_width;
             }
 
-            const int height() const
+            const width_type& width() const
+            {
+                return m_width;
+            }
+
+            width_type& height()
             {
                 return m_height;
             }
 
-            const std::vector<map::Boundary> boundaries() const
+            const width_type& height() const
             {
-                return m_boundaries;
+                return m_height;
+            }
+
+            std::vector<Territory>& territories()
+            {
+                return m_territories;
+            }
+
+            const std::vector<Territory>& territories() const
+            {
+                return m_territories;
+            }
+
+            std::vector<Bonus>& bonuses()
+            {
+                return m_bonuses;
+            }
+
+            const std::vector<Bonus>& bonuses() const
+            {
+                return m_bonuses;
             }
             
         };

@@ -1,17 +1,18 @@
 #pragma once
 
 #include <cmath>
+#include <queue>
 
 #include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
 #include "model/geometry/polygon.hpp"
 #include "model/geometry/multipolygon.hpp"
-#include "util/functions.hpp"
-
-using namespace model;
+#include "functions/util.hpp"
 
 namespace functions
 {
+
+    using namespace model::geometry;
 
     namespace detail
     {
@@ -28,8 +29,8 @@ namespace functions
 
             /* Types */
 
-            using point_type   = geometry::Point<T>;
-            using polygon_type = geometry::Polygon<T>;
+            using point_type   = Point<T>;
+            using polygon_type = Polygon<T>;
 
             /* Members */
 
@@ -59,7 +60,7 @@ namespace functions
             Cell(const point_type& center, T half, const polygon_type& polygon)
             : center(center), half(half)
             {
-                distance = util::distance_to_polygon(center, polygon),
+                distance = distance_to_polygon(center, polygon),
                 max = distance + half * SQRT_TWO;
             };
 
@@ -73,14 +74,14 @@ namespace functions
          * @returns
          */
         template <typename T>
-        inline Cell<T> get_centroid(const geometry::Polygon<T>& polygon)
+        inline Cell<T> get_centroid(const Polygon<T>& polygon)
         {
             T area = 0;
-            geometry::Point<T> center{ 0, 0 };
+            Point<T> center{ 0, 0 };
             for (size_t i = 0, j = 1; j < polygon.outer.size(); i++, j++)
             {
-                const geometry::Point<T>& left = polygon.outer.at(i);
-                const geometry::Point<T>& right = polygon.outer.at(j);
+                const Point<T>& left = polygon.outer.at(i);
+                const Point<T>& right = polygon.outer.at(j);
                 auto f = left.x * right.y - right.x * left.y;
                 center.x += (left.x + right.x) * f;
                 center.y += (left.y + right.y) * f;
@@ -98,15 +99,15 @@ namespace functions
          *
          */
         template <typename T>
-        inline std::pair<geometry::Point<T>, double> point_of_isolation(
-            const geometry::Polygon<T>& polygon,
+        inline std::pair<Point<T>, double> point_of_isolation(
+            const Polygon<T>& polygon,
             double precision = 1
         ) {
             using Cell = detail::Cell<T>;
 
             // Calculate the polygon envelope, which is the minimal bounding
             // box that enclosed the outer ring
-            const geometry::Rectangle<T> polygon_envelope = envelope(polygon);
+            const Rectangle<T> polygon_envelope = envelope(polygon);
 
             // Scale the cells according to the envelope
             const T cell_size = std::min(polygon_envelope.width(), polygon_envelope.height());
@@ -181,7 +182,7 @@ namespace functions
      * @return A pair of the center point and its distance 
      */
     template <typename T>
-    inline std::pair<geometry::Point<T>, long> center(const geometry::Rectangle<T>& rectangle)
+    inline std::pair<Point<T>, long> center(const Rectangle<T>& rectangle)
     {  
         double half_width = rectangle.width() / 2;
         double half_height = rectangle.height() / 2;
@@ -199,7 +200,7 @@ namespace functions
      * @return The center point of the polygon.
      */
     template <typename T>
-    inline std::pair<geometry::Point<T>, long> center(const geometry::Polygon<T>& polygon)
+    inline std::pair<Point<T>, long> center(const Polygon<T>& polygon)
     {
         return detail::point_of_isolation(polygon);
     }
@@ -212,13 +213,13 @@ namespace functions
      * @return The center point of the multipolygon.
      */
     template <typename T>
-    inline std::pair<geometry::Point<T>, long> center(const geometry::MultiPolygon<T>& multipolygon)
+    inline std::pair<Point<T>, long> center(const MultiPolygon<T>& multipolygon)
     {
         // Prepare the result
-        geometry::Point<T> center = { 0, 0 };
+        Point<T> center = { 0, 0 };
         double distance = 0;
         // Search for the maximum point of isolation in the polygons
-        for (const geometry::Polygon<T>& polygon : multipolygon.polygons)
+        for (const Polygon<T>& polygon : multipolygon.polygons)
         {
             auto [c, d] = detail::point_of_isolation(polygon);
             if (distance < d)

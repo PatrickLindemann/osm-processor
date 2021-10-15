@@ -1,6 +1,8 @@
 #pragma once
 
-#include "model/memory/types.hpp"
+#include <cstddef>
+
+#include "model/memory/type.hpp"
 
 namespace model
 {
@@ -8,28 +10,34 @@ namespace model
     namespace memory
     {
 
+        /**
+         * An Entity is a memory object that can be stored
+         * in a buffer. Each entity has a positive, unique
+         * identifer.
+         */
         class Entity
         {
-        public:
 
-            /**
-             * The type for identifiers.
-             * OpenStreetMap contains more than INT_MAX nodes, therefore long is used as identifier type.
-             */
-            using id_type = object_id_type;
+            /* Members */
 
+            object_id_type m_id;
+            
         protected:
 
-            id_type m_id;
-            
-            Entity(id_type id) : m_id(id) {};
+            /* Constructors */
+
+            Entity(object_id_type id) : m_id(id) {};
 
         public:
 
-            const id_type id() const
+            /* Methods */
+
+            const object_id_type& id() const
             {
                 return m_id;
             }
+
+            /* Operators */
 
             bool operator==(const Entity& other) const
             {
@@ -40,27 +48,77 @@ namespace model
             {
                 return m_id != other.id();
             }
+            
+        };
 
-            bool operator<(const Entity& other) const
+        /**
+         * An EntityRef is a reference to an entity
+         * object in memory.
+         */
+        class EntityRef
+        {
+        
+            /* Members */
+
+            object_id_type m_ref;
+            
+        public:
+
+            /* Constructors */
+
+            EntityRef(object_id_type ref) : m_ref(ref) {};
+
+            /* Methods */
+
+            const object_id_type& ref() const
             {
-                return m_id < other.id();
+                return m_ref;
             }
 
-            bool operator<=(const Entity& other) const
+            /* Operators */
+
+            bool operator==(const EntityRef& other) const
             {
-                return m_id <= other.id();
+                return m_ref == other.ref();
             }
 
-            bool operator>(const Entity& other) const
+            bool operator==(const object_id_type& id) const
             {
-                return m_id > other.id();
+                return m_ref == id;
             }
 
-            bool operator>=(const Entity& other) const
+            bool operator!=(const EntityRef& other) const
             {
-                return m_id >= other.id();
+                return m_ref != other.ref();
             }
 
+            bool operator!=(const object_id_type& id) const
+            {
+                return m_ref != id;
+            }
+
+        };
+
+        class EntityHasher
+        {
+        public:
+        
+            size_t operator()(const Entity& entity) const
+            {
+                return entity.id();
+            }
+
+        };
+
+        class EntityRefHasher
+        {
+        public:
+        
+            size_t operator()(const EntityRef& entity_ref) const
+            {
+                return entity_ref.ref();
+            }
+            
         };
 
     }

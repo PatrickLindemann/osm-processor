@@ -1,5 +1,23 @@
-#ifndef UTIL_TABLE_HPP
-#define UTIL_TABLE_HPP
+#pragma once
+
+/**
+ * 
+ * Partly adopt of https://github.com/friedmud/variadic_table, licensed
+ * under
+ * 
+ * GNU LESSER GENERAL PUBLIC LICENSE
+ * Version 2.1, February 1999
+ *
+ * Copyright (C) 1991, 1999 Free Software Foundation, Inc.
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ * Everyone is permitted to copy and distribute verbatim copies
+ * of this license document, but changing it is not allowed.
+ * 
+ * [This is the first released version of the Lesser GPL.  It also counts
+ * as the successor of the GNU Library Public License, version 2, hence
+ * the version number 2.1.]
+ * 
+ */
 
 #include <map>
 #include <tuple>
@@ -13,6 +31,9 @@
 namespace util
 {
 
+    /**
+     * A printable table with data of different types.
+     */
     template <typename ...T>
     class Table
     {
@@ -26,33 +47,15 @@ namespace util
 
         /* Members */
 
-        /**
-         * 
-         */
         std::vector<std::string> m_headers;
-
-        /**
-         * 
-         */
         std::vector<data_type> m_rows;
-
-        /**
-         * 
-         */
         std::vector<size_t> m_col_widths;
-
-        /**
-         * 
-         */
         size_t m_total_width;
 
     public:
 
         /* Constructors */
 
-        /**
-         * 
-         */
         Table(const std::vector<std::string>& headers) : m_headers(headers)
         {
             if (headers.size() != sizeof...(T))
@@ -61,9 +64,6 @@ namespace util
             }
         };
 
-        /**
-         * 
-         */
         template <typename K, typename V>
         Table(const std::vector<std::string>& headers, const std::map<K, V>& map) : m_headers(headers)
         {
@@ -77,9 +77,6 @@ namespace util
             }
         };
 
-        /**
-         * 
-         */
         template <typename K, typename V>
         Table(const std::vector<std::string>& headers, const std::unordered_map<K, V>& map) : m_headers(headers)
         {
@@ -95,33 +92,21 @@ namespace util
 
         /* Methods */
 
-        /**
-         * 
-         */
         const bool empty() const
         {
             return m_rows.empty();
         }
 
-        /**
-         * 
-         */
         const size_t column_count() const
         {
             return m_headers.size();
         }
 
-        /**
-         * 
-         */
         const size_t row_count() const
         {
             return m_rows.size();
         }
 
-        /**
-         * 
-         */
         void add_row(T... entry)
         {
             m_rows.push_back(std::make_tuple(entry...));
@@ -131,9 +116,6 @@ namespace util
         
     /* Helpers */
 
-        /**
-         * 
-         */
         template <typename ValueType>
         size_t length(const ValueType& value) const
         {
@@ -179,9 +161,6 @@ namespace util
             );
         }
 
-        /**
-         * 
-         */
         void resize()
         {
             // Determine the width for each column
@@ -249,9 +228,6 @@ namespace util
 
         /* Printing methods */
 
-        /**
-         * 
-         */
         template <typename StreamType>
         void print(StreamType& stream)
         {
@@ -299,5 +275,3 @@ namespace util
     };
 
 }
-
-#endif

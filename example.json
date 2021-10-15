@@ -18,8 +18,8 @@
                 "name" : "South America",
                 "armies": 4,
                 "color": "#DD0000",
-                "bonuses": [],
-                "territories": [1, 4, 6, 8] 
+                "super_bonus": true,
+                "children": []
             }
         ]
     }

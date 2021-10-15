@@ -1,19 +1,23 @@
 #pragma once
 
 #include <algorithm>
-#include <boost/lexical_cast.hpp>
 #include <stack>
-
-#include <osmium/osm/types.hpp>
 #include <string>
 
+#include <boost/lexical_cast.hpp>
+#include <osmium/osm/types.hpp>
+
+
+#include "model/memory/entity.hpp"
+#include "model/memory/entity_ref_list.hpp"
 #include "model/memory/node.hpp"
 #include "model/memory/ring.hpp"
+#include "model/memory/type.hpp"
 #include "model/memory/way.hpp"
 #include "model/memory/relation.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
-#include "model/memory/types.hpp"
+#include "model/memory/type.hpp"
 
 #include "model/geometry/point.hpp"
 #include "model/geometry/segment.hpp"
@@ -25,145 +29,180 @@ namespace mapmaker
     namespace assembler
     {
 
-        using namespace model;
+        using namespace model::memory;
+        using namespace model::geometry;
 
-        template <typename T>
         class Assembler
         {
-        public:
-
-            using id_type = memory::object_id_type;
-
-            enum Strategy
-            {
-                KEEP,
-                SPLIT
-            };
-
-        protected:
-
-            const memory::Buffer<memory::Node<T>> m_nodes;
-            const memory::Buffer<memory::Way<T>> m_ways;
-            const memory::Buffer<memory::Relation<T>> m_relations;             
-            Strategy m_strategy;  
+            
+            /* Members */
 
             /**
-             * The output area buffer.
+             * The result area buffer
              */
-            memory::Buffer<memory::Area<T>> m_areas;
+            Buffer<Area>& m_area_buffer;
+
+            /**
+             * 
+             */
+            Buffer<Node>&      m_node_buffer;
+            Buffer<Way>&       m_way_buffer;
+            Buffer<Relation>&  m_relation_buffer;
+
+            /**
+             * 
+             */
+            bool m_split_areas;  
+            
+            /**
+             * 
+             */
+            double m_threshold;
 
         public:
 
+            /* Constructors */
+
             Assembler(
-                const memory::Buffer<memory::Node<T>>& nodes,
-                const memory::Buffer<memory::Way<T>>& ways,
-                const memory::Buffer<memory::Relation<T>> relations,
-                Strategy strategy = Strategy::SPLIT
-            ) : m_nodes(nodes), m_ways(ways), m_relations(relations), m_strategy(strategy) {}
+                Buffer<Area>& areas,
+                Buffer<Node>& nodes,
+                Buffer<Way>& ways,
+                Buffer<Relation>& relations,
+                bool split_areas,
+                double threshold
+            ) : m_area_buffer(areas), m_node_buffer(nodes), m_way_buffer(ways), m_relation_buffer(relations),
+                m_split_areas(split_areas), m_threshold(threshold) {};
 
         protected:
 
+            /* Helper classes */
+
+            /**
+             *
+             */
             struct Ring
             {
-                std::vector<id_type> ways;
-                std::vector<id_type> nodes;
+                /**
+                 * 
+                 */
+                EntityRefList<NodeRef> nodes;
+
+                /**
+                 * 
+                 */
+                EntityRefList<WayRef> ways;
+            
+                /**
+                 * 
+                 */
+                void add_way_nodes(const Way& way)
+                {
+                    // Add way reference to ring
+                    ways.push_back(way.id());
+                    // Check if this is the first way that gets inserted
+                    if (nodes.empty())
+                    {
+                        // Insert all node references
+                        nodes.insert(nodes.end(), way.cbegin(), way.cend());
+                    }
+                    // Check if the way needs to be reversed
+                    else if (nodes.back() == way.front())
+                    {
+                        // Insert all node references except the first
+                        nodes.insert(nodes.end(), way.cbegin() + 1, way.cend());
+                    }
+                    else
+                    {
+                        // Insert all node references except the first in reverse order
+                        nodes.insert(nodes.end(), way.crbegin() + 1, way.crend());
+                    }
+                }
+
+                /**
+                 * 
+                 */
+                void remove_way_nodes(const Way& way)
+                {
+                    assert(ways.back() == way.id());
+                    // Remove node references of the way
+                    for (size_t i = 0; i < way.size(); i++)
+                    {
+                        nodes.pop_back();
+                    }
+                    // Remove way reference
+                    ways.pop_back();
+                }
+
             };
 
-            void add_way(Ring& ring, id_type way_ref)
-            {
-                // Add way reference to ring
-                const memory::Way<T>& way = m_ways.get(way_ref);
-                ring.ways.push_back(way_ref);
-                // Check if this is the first way that gets inserted
-                // into this ring
-                if (ring.nodes.empty())
-                {
-                    // Add all node references of the way in normal order
-                    for (auto it = way.cbegin(); it < way.cend(); it++)
-                    {
-                        ring.nodes.push_back(*it);
-                    }
-                    return;
-                }
-                // Check if the way needs to be reversed
-                if (ring.nodes.back() == way.back())
-                {
-                    // Add node references except the first to ring in reverse order
-                    for (auto it = way.crbegin() + 1; it < way.crend(); it++)
-                    {
-                        ring.nodes.push_back(*it);
-                    }
-                    return;
-                }
-                // Add node references except the first to ring in normal order
-                for (auto it = way.cbegin() + 1; it < way.cend(); it++)
-                {
-                    ring.nodes.push_back(*it);
-                }
-            }
+            /* Helper methods */
 
-            void remove_last_way(Ring& ring)
+            /**
+             * 
+             */
+            std::vector<Segment<double>> get_segments(const Ring& ring)
             {
-                // Remove last node references
-                const memory::Way<T>& way = m_ways.get(ring.ways.back());
-                for (size_t i = 0; i < way.size(); i++)
+                std::vector<Segment<double>> segments;
+                for (size_t i = 0, j = ring.nodes.size() - 1; i < ring.nodes.size(); i++, j = i - 1)
                 {
-                    ring.nodes.pop_back();
-                }
-                // Remove last way reference
-                ring.ways.pop_back();
-            }
-
-            std::vector<geometry::Segment<T>> get_segments(const Ring& ring)
-            {
-                std::vector<geometry::Segment<T>> result;
-                // Add the way segments
-                for (size_t i = 0, j = 1; j < ring.nodes.size(); i++, j++)
-                {
-                    result.push_back({
-                        m_nodes.get(i).point(),
-                        m_nodes.get(j).point() 
+                    NodeRef left = ring.nodes.at(j);
+                    NodeRef right = ring.nodes.at(i);
+                    segments.push_back({
+                        m_node_buffer.at(left).point(),
+                        m_node_buffer.at(right).point() 
                     });
                 }
-                return result;
+                return segments;
             }
 
+            /**
+             * 
+             */
             bool outside_x_range(
-                const geometry::Segment<T>& s1,
-                const geometry::Segment<T>& s2
+                const Segment<double>& s1,
+                const Segment<double>& s2
             ) noexcept {
-                return s1.first().x > s2.last().x;
+                return s1.first().x() > s2.last().x();
             }
 
+            /**
+             * 
+             */
             bool y_range_overlap(
-                const geometry::Segment<T>& s1,
-                const geometry::Segment<T>& s2
+                const Segment<double>& s1,
+                const Segment<double>& s2
             ) noexcept {
-                const std::pair<T, T> m1 = std::minmax(s1.first().y, s1.last().y);
-                const std::pair<T, T> m2 = std::minmax(s2.first().y, s2.last().y);
+                std::pair<double, double> m1 = std::minmax(s1.first().y(), s1.last().y());
+                std::pair<double, double> m2 = std::minmax(s2.first().y(), s2.last().y());
                 return !(m1.first > m2.second || m2.first > m1.second);
             }
 
+            /**
+             * 
+             */
             bool is_closed(const Ring& ring)
             {
                 return ring.nodes.front() == ring.nodes.back();
             }
 
+            /**
+             * 
+             */
             bool is_valid(const Ring& ring)
             {
                 // Get ring segments
-                std::vector<geometry::Segment<T>> segments = get_segments(ring);
-                if (segments.size() < 2)
+                std::vector<Segment<double>> segments = get_segments(ring);
+                if (segments.size() < 3)
                 {
-                    return true;
+                    return false;
                 }
                 // Check if the ring intersects itself
                 for (auto it1 = segments.cbegin(); it1 != segments.cend(); it1++)
                 {
-                    const geometry::Segment<T>& s1 = *it1;
+                    const Segment<double>& s1 = *it1;
                     for (auto it2 = it1 + 1; it2 != segments.cend(); it2++)
                     {
-                        const geometry::Segment<T>& s2 = *it2;
+                        const Segment<double>& s2 = *it2;
                         if (outside_x_range(s1, s2))
                         {
                             break;
@@ -179,27 +218,30 @@ namespace mapmaker
                 }
                 return true;
             }
-
-            bool create_ring(
+            
+            /**
+             * 
+             */
+            bool complete_ring(
                 Ring& ring,
-                std::vector<id_type>& way_refs,
-                std::unordered_map<id_type, bool>& processed
+                EntityRefList<WayRef>& ways,
+                std::unordered_map<WayRef, bool, EntityRefHasher>& processed
             ) {
                 if (is_closed(ring))
                 {
                     return is_valid(ring);
                 }
                 // Find candidates
-                std::stack<id_type> candidates{};
-                for (const auto& way_ref : way_refs)
+                std::stack<WayRef> candidates{};
+                for (const WayRef& ref : ways)
                 {
-                    if (!processed.at(way_ref))
+                    if (!processed.at(ref))
                     {
-                        const memory::Way<T>& next = m_ways.get(way_ref);
+                        const Way& next = m_way_buffer.at(ref);
                         if (ring.nodes.back() == next.front()
                          || ring.nodes.back() == next.back())
                         {
-                            candidates.push(next.id());
+                            candidates.push({ next.id() });
                         }
                     }
                 }
@@ -207,20 +249,21 @@ namespace mapmaker
                 while (!candidates.empty())
                 {
                     // Get next candidate
-                    id_type& candidate = candidates.top();
+                    WayRef& candidate = candidates.top();
                     candidates.pop();
+                    Way& way = m_way_buffer.at(candidate);
                     // Add current candidate to the ring
-                    add_way(ring, candidate);
+                    ring.add_way_nodes(way);
                     processed.at(candidate) = true;
                     // Try to create the ring with the current candidate
-                    bool finished = create_ring(ring, way_refs, processed);
+                    bool finished = complete_ring(ring, ways, processed);
                     // Check if ring was finished
                     if (finished)
                     {
                         return true;
                     }
                     // Backtrack: Remove candidate from ring and try another
-                    remove_last_way(ring);
+                    ring.remove_way_nodes(way);
                     processed.at(candidate) = false;
                 }
                 return false;
@@ -229,27 +272,28 @@ namespace mapmaker
             /**
              * https://wiki.openstreetmap.org/wiki/Relation:multipolygon/Algorithm
              */
-            std::vector<Ring> create_rings(std::vector<id_type>& way_refs)
+            std::vector<Ring> create_rings(EntityRefList<WayRef>& ways)
             {
                 // Prepare the result vector of rings
                 std::vector<Ring> result;
                 // Prepare the lookup table for processed way indices
-                std::unordered_map<id_type, bool> processed = {};
-                for (const auto& way_ref : way_refs)
+                std::unordered_map<WayRef, bool, EntityRefHasher> processed = {};
+                for (const WayRef& ref : ways)
                 {
-                    processed[way_ref] = false;
+                    processed[ref] = false;
                 }
                 // Find the next non-processed way
-                for (const auto& way_ref : way_refs)
+                for (const WayRef& ref : ways)
                 {
-                    if (!processed.at(way_ref))
+                    if (!processed.at(ref))
                     {
                         // Start a new ring and create it with backtracking
                         Ring ring;
-                        add_way(ring, way_ref);
-                        processed.at(way_ref) = true;
+                        Way& way = m_way_buffer.at(ref);
+                        ring.add_way_nodes(way);
+                        processed.at(ref) = true;
                         // Create the ring
-                        create_ring(ring, way_refs, processed);
+                        complete_ring(ring, ways, processed);
                         // Push the created ring to the result collection if
                         // it is valid
                         if (ring.nodes.size() > 2)
@@ -308,9 +352,9 @@ namespace mapmaker
                 return result;
             }
 
-            memory::Ring<T> convert_ring(const id_type id, const Ring& ring)
+            Ring convert_ring(const id_type id, const Ring& ring)
             {
-                memory::Ring<T> result{ id };
+                Ring result{ id };
                 for (const id_type node_ref : ring.nodes)
                 {
                     result.push_back(node_ref);
@@ -318,11 +362,11 @@ namespace mapmaker
                 return result;
             }
 
-            void add_way_references(memory::Area<T>& area, const Ring& ring)
+            void add_way_nodes_references(Area& area, const Ring& ring)
             {
                 for (const id_type way_ref : ring.ways)
                 {
-                    area.add_way_reference(way_ref);
+                    area.add_way_nodes_reference(way_ref);
                 }
             }
 
@@ -335,22 +379,22 @@ namespace mapmaker
                 const Group& group
             ) {
                 // Prepare result area
-                memory::Area<T> area = { m_areas.size(), name, level };
+                Area area = { m_area_buffer.size(), name, level };
                 // Convert and add outer ring
-                memory::Ring<T> outer = convert_ring(0, group.outer);
+                Ring outer = convert_ring(0, group.outer);
                 area.add_outer_ring(outer);
-                add_way_references(area, group.outer);
+                add_way_nodes_references(area, group.outer);
                 // Convert and add inner rings
                 for (size_t i = 0; i < group.inners.size(); i++)
                 {
-                    memory::Ring<T> inner = convert_ring(
+                    Ring inner = convert_ring(
                         i,
                         group.inners.at(i)
                     );
                     area.add_inner_ring(outer, inner);
-                    add_way_references(area, group.inners.at(i));
+                    add_way_nodes_references(area, group.inners.at(i));
                 }
-                m_areas.append(area);
+                m_area_buffer.append(area);
             }
 
             void create_multipolygon_area(
@@ -359,34 +403,34 @@ namespace mapmaker
                 const std::vector<Group>& groups
             ) {
                 // Prepare result area
-                memory::Area<T> area = { m_areas.size(), name, level };
+                Area area = { m_area_buffer.size(), name, level };
                 for (size_t i = 0; i < groups.size(); i++)
                 {
                     // Get current group
                     const Group& group = groups.at(i);
                     // Convert and add outer ring
-                    memory::Ring<T> outer = convert_ring(i, group.outer);
+                    Ring outer = convert_ring(i, group.outer);
                     area.add_outer_ring(outer);
-                    add_way_references(area, group.outer);
+                    add_way_nodes_references(area, group.outer);
                     // Convert and add inner rings
                     for (size_t j = 0; j < group.inners.size(); j++)
                     {
-                        memory::Ring<T> inner = convert_ring(
+                        Ring inner = convert_ring(
                             i * group.inners.size() + j,
                             group.inners.at(j)
                         );
                         area.add_inner_ring(outer, inner);
-                        add_way_references(area, group.inners.at(j));
+                        add_way_nodes_references(area, group.inners.at(j));
                     }
                 }
-                m_areas.append(area);
+                m_area_buffer.append(area);
             }
 
         public:
 
-            memory::Buffer<memory::Area<T>>& build()
+            void run()
             {
-                for (const memory::Relation<T>& relation : m_relations)
+                for (const Relation& relation : m_relation_buffer)
                 {
                     // Retrieve relation tags
                     std::string name = relation.get_tag("name");
@@ -432,7 +476,6 @@ namespace mapmaker
                         create_area(name, level, groups.at(0));
                     }
                 }
-                return m_areas;
             }
 
         };
