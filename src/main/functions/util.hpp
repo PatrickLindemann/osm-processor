@@ -4,10 +4,10 @@
 
 #include "model/geometry/point.hpp"
 
+using namespace model::geometry;
+
 namespace functions
 {
-
-    using namespace model;
 
     const double HALF_C = M_PI / 180.0;
     const double TWO_C = 180.0 / M_PI ; 
@@ -45,10 +45,10 @@ namespace functions
      */
     template <typename T>
     inline double dot(
-        const geometry::Point<T>& p,
-        const geometry::Point<T>& q
+        const Point<T>& p,
+        const Point<T>& q
     ) {
-        return p.x * q.x + p.y * q.y;
+        return p.x() * q.x() + p.y() * q.y();
     }
   
     /**
@@ -59,7 +59,7 @@ namespace functions
      * @param upper The upper bound of the target interval
      */
     template <typename T>
-    inline T normalize(T value, T lower, T upper)
+    inline T clamp(T value, T lower, T upper)
     {
         if (value < lower)
         {

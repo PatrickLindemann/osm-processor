@@ -39,12 +39,12 @@ namespace model
                 return m_outer;
             }
 
-            Ring<T>& inners()
+            std::vector<Ring<T>>& inners()
             {
                 return m_inners;
             }
 
-            const Ring<T>& inners() const
+            const std::vector<Ring<T>>& inners() const
             {
                 return m_inners;
             }

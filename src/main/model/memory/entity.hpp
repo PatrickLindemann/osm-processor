@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-#include "model/memory/type.hpp"
+#include "model/type.hpp"
 
 namespace model
 {

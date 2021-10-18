@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/map/type.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
@@ -8,44 +8,44 @@ namespace model
     namespace map
     {
 
-        class Entity
+        class Boundary
         {
 
             /* Members */
 
-            id_type m_id;
+            object_id_type m_id;
 
         protected:
 
             /* Constructors */
 
-            Entity(id_type id) : m_id(id) {};
+            Boundary(object_id_type id) : m_id(id) {};
 
         public:
 
-            const id_type& id() const
+            const object_id_type& id() const
             {
                 return m_id;
             }
 
         };
 
-        class EntityRef
+        class BoundaryRef
         {
 
             /* Members */
 
-            id_type m_ref;
+            object_id_type m_ref;
         
         protected:
 
             /* Constructors */
 
-            EntityRef(id_type ref) : m_ref(ref) {};
+            BoundaryRef(object_id_type ref) : m_ref(ref) {};
 
         public:
 
-            const id_type& ref() const
+            const object_id_type& ref() const
             {
                 return m_ref;
             }

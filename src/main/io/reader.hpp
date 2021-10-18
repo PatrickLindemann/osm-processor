@@ -1,10 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <set>
-#include <tuple>
 #include <string>
-#include <algorithm>
+#include <tuple>
 
 #include <osmium/visitor.hpp>
 #include <osmium/io/any_input.hpp>
@@ -48,7 +48,7 @@ namespace io
 
             // Create a TagCountHandler that counts the levels for administrative
             // boundaries
-            handler::TagValueCountHandler level_counter{ "admin_level" };
+            handler::TagValueCountHandler<level_type> level_counter{ "admin_level" };
 
             // Create the BoundsHandler that determines the bounds of the
             // input excerpt

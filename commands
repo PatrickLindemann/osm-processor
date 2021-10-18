@@ -1,0 +1,46 @@
+
+warzone-osm-mapmaker
+warzone-osm-mapmaker checkout <input>
+warzone-osm-mapmaker create <input>
+warzone-osm-mapmaker update <input>
+
+Interactive 
+
+warzone-osm-mapmaker
+
+Options
+
+    -h --help prints all options
+
+Checkout
+
+warzone-osm-mapmaker checkout <input_osm>
+
+Options:
+
+    -h --help
+
+Create
+
+warzone-osm-mapmaker create <input_osm>
+
+Options:
+    -o --output-name
+    -t --territory-level
+    -b --bonus-levels
+    -w --width
+    -h --height
+    -c --compression-tolerance
+    -a --area-threshold
+    -v --verbose
+    -h --help
+
+Update
+
+warzone-osm-mapmaker update <input_json>
+
+Options:
+    -t --api-token
+    -e --email
+    -c --config
+    -h --help

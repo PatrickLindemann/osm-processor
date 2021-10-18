@@ -21,7 +21,8 @@ namespace model
             /* Constructors */
 
             Way(object_id_type id) : Entity(id), EntityRefList() {};
-
+            Way(object_id_type id, const EntityRefList<NodeRef>& nodes) : Entity(id), EntityRefList(nodes) {};
+            
         };
 
         class WayRef : public EntityRef {};

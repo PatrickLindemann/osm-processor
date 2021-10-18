@@ -71,6 +71,22 @@ namespace model
             /* Vertex methods */
 
             /**
+             * Retrieve the vertex container.
+             */
+            virtual vertex_container& vertices()
+            {
+                return m_vertices;
+            }
+
+            /**
+             * Retrieve the vertex container.
+             */
+            virtual const vertex_container& vertices() const
+            {
+                return m_vertices;
+            }
+
+            /**
              * Retrieves the vertex count in the graph.
              */
             virtual size_t vertex_count() const
@@ -99,6 +115,22 @@ namespace model
             virtual size_t edge_count() const
             {
                 return m_edges.size();
+            }
+
+            /**
+             * Retrieve the edge container.
+             */
+            virtual edge_container& edges()
+            {
+                return m_edges;
+            }
+
+            /**
+             * Retrieve the edge container.
+             */
+            virtual const edge_container& edges() const
+            {
+                return m_edges;
             }
 
             /**

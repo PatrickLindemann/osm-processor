@@ -1,17 +1,10 @@
 #pragma once
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
-#include <cstdint>
 #include <iomanip>
 #include <string>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
-/**
- * A collection of miscellaneous helper functions
- */
 namespace util
 {
 
@@ -28,42 +21,6 @@ namespace util
         std::stringstream stream;
         stream << std::hex << value;
         return stream.str();
-    }
-
-    /**
-     * Retrieves the current timestamp, formats it according to
-     * the ISO-8601 representation and returns it as string.
-     * 
-     * @returns The ISO-8601 timestamp string
-     */
-    std::string get_current_iso_timestamp()
-    {
-        using namespace boost::posix_time;
-        ptime t = microsec_clock::universal_time();
-        return to_iso_extended_string(t) + "Z";
-    }
-
-    /**
-     * Joins a list of values into a string while separating
-     * the values with a specified delimiter.
-     * 
-     * @param list      The list collection
-     * @param delimiter The delimiter string
-     * @returns         The list as string representation
-     */
-    template <typename ListType>
-    std::string join(const ListType& list, std::string delimiter = ",")
-    {
-        std::string result = "";
-        for (auto it = list.begin(); it != list.end(); it++)
-        {
-            if (it != list.begin())
-            {
-                result += ", ";
-            }
-            result += std::to_string(*it);
-        }
-        return result;
     }
 
     /**

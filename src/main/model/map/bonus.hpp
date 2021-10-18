@@ -4,8 +4,8 @@
 
 #include "model/geometry/multipolygon.hpp"
 #include "model/geometry/rectangle.hpp"
-#include "model/map/entity.hpp"
-#include "model/map/type.hpp"
+#include "model/map/boundary.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
@@ -15,20 +15,12 @@ namespace model
        
         using namespace model::geometry;
 
-        class BonusRef : public EntityRef
-        {
-        public:
-
-            /* Constructors */
-
-            BonusRef(id_type ref) : EntityRef(ref) {};
-
-        };
+        class BonusRef : public BoundaryRef {};
 
         /**
          * 
          */
-        class Bonus : public Entity
+        class Bonus : public Boundary
         {
 
             /* Members */
@@ -41,7 +33,7 @@ namespace model
             /**
              * 
              */
-            army_count_type m_armies;
+            army_type m_armies;
             
             /**
              * 
@@ -51,7 +43,7 @@ namespace model
             /**
              * 
              */
-            std::vector<EntityRef> m_children;
+            std::vector<BoundaryRef> m_children;
 
             /**
              * 
@@ -67,7 +59,7 @@ namespace model
 
             /* Constructors */
 
-            Bonus(id_type id) : Entity(id) {};
+            Bonus(object_id_type id) : Boundary(id) {};
 
             /* Accessors */
 
@@ -81,12 +73,12 @@ namespace model
                 return m_name;
             }
 
-            army_count_type& armies()
+            army_type& armies()
             {
                 return m_armies;
             }
 
-            const army_count_type& armies() const
+            const army_type& armies() const
             {
                 return m_armies;
             }
@@ -101,12 +93,12 @@ namespace model
                 return m_color;
             }
 
-            std::vector<EntityRef>& children()
+            std::vector<BoundaryRef>& children()
             {
                 return m_children;
             };
 
-            const std::vector<EntityRef>& children() const
+            const std::vector<BoundaryRef>& children() const
             {
                 return m_children;
             };
@@ -143,6 +135,8 @@ namespace model
         {
         public:
 
+            using Bonus::Bonus;
+
             /* Methods */
 
             bool is_super() const override
@@ -152,7 +146,7 @@ namespace model
 
             bool is_regular() const override
             {
-                return false;
+                return true;
             }
 
         };
@@ -164,11 +158,13 @@ namespace model
         {
         public:
 
+            using Bonus::Bonus;
+            
             /* Methods */
 
             bool is_super() const override
             {
-                return false;
+                return true;
             }
 
             bool is_regular() const override

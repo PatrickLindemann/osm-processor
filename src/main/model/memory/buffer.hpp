@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "model/memory/entity.hpp"
-#include "model/memory/type.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
@@ -23,23 +23,12 @@ namespace model
          * https://en.cppreference.com/w/cpp/container/vector/vector 
          */
         template <typename ValueType>
-        class Buffer : public std::vector<ValueType>
+        class Buffer : private std::vector<ValueType>
         {
 
             /* Types */
 
             using value_type = ValueType;
-
-        private:
-
-            // Make some accessor functions private to prevent
-            // non-continous insertions
-            using std::vector<ValueType>::insert;
-            using std::vector<ValueType>::emplace;
-            using std::vector<ValueType>::erase;
-            using std::vector<ValueType>::emplace_back;
-            using std::vector<ValueType>::resize;
-            using std::vector<ValueType>::swap;
 
         public:
 
@@ -89,6 +78,28 @@ namespace model
             {
                 return this->at(ref.ref());
             }
+
+            /* Inherited methods */
+
+            using std::vector<ValueType>::begin;
+            using std::vector<ValueType>::end;
+            using std::vector<ValueType>::rbegin;
+            using std::vector<ValueType>::rend;
+            using std::vector<ValueType>::cbegin;
+            using std::vector<ValueType>::cend;
+            using std::vector<ValueType>::crbegin;
+            using std::vector<ValueType>::crend;
+
+            using std::vector<ValueType>::size;
+            using std::vector<ValueType>::max_size;
+            using std::vector<ValueType>::capacity;
+            using std::vector<ValueType>::empty;
+            using std::vector<ValueType>::reserve;
+
+            using std::vector<ValueType>::front;
+            using std::vector<ValueType>::back;
+
+            using std::vector<ValueType>::pop_back;
 
         };
 

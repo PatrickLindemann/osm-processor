@@ -28,17 +28,12 @@ namespace model
             /**
              * 
              */
-            std::string m_name;
+            size_t m_width;
 
             /**
              * 
              */
-            width_type m_width;
-
-            /**
-             * 
-             */
-            height_type m_height;
+            size_t m_height;
 
             /**
              * 
@@ -58,32 +53,22 @@ namespace model
 
             /* Accessors */
 
-            std::string& name()
-            {
-                return m_name;
-            }
-
-            const std::string& name() const
-            {
-                return m_name;
-            }
-
-            width_type& width()
+            size_t& width()
             {
                 return m_width;
             }
 
-            const width_type& width() const
+            const size_t& width() const
             {
                 return m_width;
             }
 
-            width_type& height()
+            size_t& height()
             {
                 return m_height;
             }
 
-            const width_type& height() const
+            const size_t& height() const
             {
                 return m_height;
             }

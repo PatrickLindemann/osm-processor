@@ -12,7 +12,7 @@
 #include "model/map/bonus.hpp"
 #include "model/map/map.hpp"
 #include "model/map/territory.hpp"
-#include "util/misc.hpp"
+#include "util/time.hpp"
 
 using namespace model;
 

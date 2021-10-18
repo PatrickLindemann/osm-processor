@@ -8,59 +8,65 @@
 #include "model/geometry/polygon.hpp"
 #include "functions/util.hpp"
 
+using namespace model;
+
+
 namespace functions
 {
 
-    using namespace model;
-
     /**
-     * Calculate the distance between two points
+     * Calculate the euclidean distance between two points.
      * 
-     * @param p The first point
-     * @param q The second point
-     * @return The absolute distance between p and q
+     * @param point1 The first point
+     * @param point2 The second point
+     * @return       The absolute distance between the points
      * 
      * Time complexity: Constant
      */
     template <typename T>
     inline double distance(
-        const geometry::Point<T>& p,
-        const geometry::Point<T>& q
+        const geometry::Point<T>& point1,
+        const geometry::Point<T>& point2
     ) {
-        return std::hypot(p.x - q.x, p.y - q.y);
+        return std::hypot(
+            point1.x() - point2.x(),
+            point1.y() - point2.y()
+        );
     }
 
     /**
-     * Calculate the perpendicular distance of a point to a segment
+     * Calculate the perpendicular distance of a point to a segment,
+     * defined by two points.
      * 
-     * @param point The point
+     * @param point      The point
      * @param line_start The line starting point
-     * @param line_end The line ending point
-     * @return The perpendicular distance of the point to the segment
+     * @param line_end   The line ending point
+     * @return           The perpendicular distance of the point to
+     *                   the segment
      * 
      * Time complexity: Constant
      */
     template <typename T>
     inline double perpendicular_distance(
         const geometry::Point<T>& point,
-        const geometry::Point<T>& line_start,
-        const geometry::Point<T>& line_end
+        const geometry::Point<T>& segment_start,
+        const geometry::Point<T>& segment_end
     ) {
-        // Calculate the direction vector of the line
-        geometry::Point<T> dir = line_end - line_start;
+        // Calculate the direction vector of the segment
+        geometry::Point<T> dir = segment_start - segment_end;
 
         // Normalize the direction vector
-        double length = std::hypot(dir.x, dir.y);
+        double length = std::hypot(dir.x(), dir.y());
         if (length > 0.0)
         {
             dir /= length;
         }
             
         // Calculate the point-to-line vector
-        geometry::Point<T> ps = point - line_start;
+        geometry::Point<T> ps = point - segment_start;
 
         // Calculate the dot product between the two points to retrieve
-        // the length between line_start and the plumb point L relative to p
+        // the length between segment_start and the plumb point L relative to p
         double dt = dot(dir, ps);
 
         // Calculate the point of plumb on the line relative to p
@@ -72,31 +78,29 @@ namespace functions
     }
 
     /**
+     * Calculate the minimal (signed) distance of to a ring.
      * 
-     * @param point
-     * @param ring
+     * @param point     The point
+     * @param ring      The ring
+     * @returns         The signed distance with these properties:
+     *                   d > 0 => Point is inside of the ring
+     *                   d < 0 => Point is outside of the ring
+     *                   d = 0 => Point is on the ring
+     * 
+     * Time complexity: Linear
      */
     template <typename T>
     inline double distance_to_ring(
         const geometry::Point<T>& point,
         const geometry::Ring<T>& ring
-    ) {
-        
-        double result = DBL_MAX;
-        bool inside = false;
-
-        // Check for invalid rings
-        if (ring.size() < 3)
-        {
-            return result;
-        }
-        
+    ) {       
+        bool inside;
+        double distance = DBL_MAX;
         // Iterate over the ring segments and determine the minimum
         // distance between the point and any segment
-        for (size_t i = 0, j = 1; j < ring.size(); i++, j++) {
-            const auto& left = ring.at(i);
-            const auto& right = ring.at(j);
-
+        for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
+            const geometry::Point<T>& left = ring.at(i);
+            const geometry::Point<T>& right = ring.at(j);
             // Check if point is inside or outside of the ring
             if ((left.y > point.y) != (right.y > point.y))
             {
@@ -106,42 +110,44 @@ namespace functions
                     inside = !inside;
                 }
             }
-
             // Determine the perpendicular distance to the current segment
             // and save it if it is the new minimum
             double d = perpendicular_distance(point, left, right);
-            result = std::min(d, result);
+            distance = std::min(d, distance);
         }
-
-        return (inside ? 1 : -1) * std::sqrt(result);
+        return (inside ? 1 : -1) * std::sqrt(distance);
     }
 
     /**
-     * Calculate the minimal distance of a point to the outer ring of 
-     * a polygon.
+     * Calculate the minimal (signed) distance of a point to any
+     * ring of a polygon.
      * 
-     * @param point The point
-     * @param polygon The polygon
-     * @return The minimal (signed) distance from to point to the polygon.
+     * @param point     The point
+     * @param polygon   The polygon
+     * @returns         The signed distance with these properties:
+     *                   d > 0 => Point is inside of the polygon
+     *                   d < 0 => Point is outside of the polygon
+     *                   d = 0 => Point is on the polygon
      * 
-     * Time complexity: Constant
+     * Time complexity: Linear
      */
     template <typename T>
     inline double distance_to_polygon(
         const geometry::Point<T>& point,
         const geometry::Polygon<T>& polygon
     ) {
-        double result = distance_to_ring(point, polygon.outer);
-
+        double distance = distance_to_ring(point, polygon.outer);
         // Calculate the minimal (signed) distance of the point
         // to each inner ring of the polygon 
         for (const auto& inner : polygon.inners)
         {
             double d = distance_to_ring(point, inner);
-            result = std::min(d, result); 
+            if (std::abs(d) < std::abs(distance))
+            {
+                distance  = d;
+            }
         }
-
-        return result;
+        return distance;
     }
 
 }

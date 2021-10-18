@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "model/geometry/segment.hpp";
+#include "model/geometry/segment.hpp"
 
 namespace mapmaker
 {

@@ -20,7 +20,7 @@
 #include "model/memory/node.hpp"
 #include "model/memory/relation.hpp"
 #include "model/memory/way.hpp"
-#include "model/types.hpp"
+#include "model/type.hpp"
 
 namespace model
 {
@@ -50,7 +50,7 @@ namespace model
 
         // Boundary information
         size_t boundary_count;
-        std::map<std::string, size_t> level_counts;
+        std::map<level_type, size_t> level_counts;
 
         template <typename StreamType>
         void print(StreamType& stream) const
@@ -65,12 +65,12 @@ namespace model
                 << "  " << "Ways: " << ways << '\n'
                 << "  " << "Relations: " << relations << '\n'
                 << "Bounding Box:" << '\n'
-                << "  " << "Min: (" << bounds.min.x << ", " << bounds.min.y << ")" << '\n' 
-                << "  " << "Max: (" << bounds.max.x << ", " << bounds.max.y << ")" << '\n' 
+                << "  " << "Min: (" << bounds.min().x() << ", " << bounds.min().y() << ")" << '\n' 
+                << "  " << "Max: (" << bounds.max().x() << ", " << bounds.max().y() << ")" << '\n' 
                 << "Boundaries: " << '\n'
                 << "  " << "Total: " << boundary_count << '\n'
                 << "  " << "Level Distribution: " << '\n';
-            for (auto& [level, count] : level_counts)
+            for (const auto& [level, count] : level_counts)
             {
                 stream << "   L" << level << ": " << count << '\n';
             }
@@ -84,13 +84,6 @@ namespace model
      */
     struct DataContainer
     {
-        // General information
-        std::string name;
-        width_type width;
-        height_type height;
-        level_type territory_level;
-        std::vector<level_type> bonus_levels;
-
         // OSM data buffers
         Buffer<Node> nodes;
         Buffer<Way> ways;

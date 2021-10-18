@@ -6,7 +6,9 @@
 #include <unordered_map>
 
 #include "model/memory/entity.hpp"
+#include "model/memory/entity_ref_list.hpp"
 #include "model/memory/ring.hpp"
+#include "model/memory/way.hpp"
 #include "model/type.hpp"
 
 namespace model
@@ -14,9 +16,6 @@ namespace model
 
     namespace memory
     {
-
-        class OuterRing : public Ring {};
-        class InnerRing : public Ring {};
 
         /**
          * An Area is a non-native OSMObject that is used to
@@ -29,8 +28,8 @@ namespace model
 
             /* Types */
 
-            using outers_type = std::vector<OuterRing>;
-            using inners_type = std::vector<InnerRing>;
+            using outers_type = std::vector<Ring>;
+            using inners_type = std::vector<Ring>;
             using ring_map_type = std::unordered_map<object_id_type, std::vector<object_id_type>>;
 
         protected:
@@ -44,6 +43,16 @@ namespace model
              * The area admin_level
              */
             level_type m_level;
+
+            /**
+             * The original relation id from which this area was assembled from.
+             */
+            object_id_type m_original_id = -1;
+
+            /**
+             * The list of referenced ways of the area
+             */
+            EntityRefList<WayRef> m_ways;
 
             /**
              * The outer ring container.
@@ -65,8 +74,11 @@ namespace model
 
             /* Constructors */
 
-            Area(object_id_type id, std::string name, unsigned short level)
+            Area(object_id_type id, std::string name, level_type level)
             : Entity(id), m_name(name), m_level(level) {};
+
+            Area(object_id_type id, std::string name, level_type level, object_id_type original_id)
+            : Entity(id), m_name(name), m_level(level), m_original_id(original_id) {};
 
             /* Accessors */
 
@@ -78,6 +90,16 @@ namespace model
             const level_type& level() const noexcept
             {
                 return m_level;
+            }
+
+            const object_id_type& original_id() const noexcept
+            {
+                return m_original_id;
+            }
+
+            const EntityRefList<WayRef> ways() const noexcept
+            {
+                return m_ways;
             }
 
             const outers_type& outer_rings() const noexcept
@@ -92,7 +114,7 @@ namespace model
              * @returns     All inner ring contained in the outer
              *              ring
              */
-            const inners_type inner_rings(const OuterRing& outer) const noexcept
+            const inners_type inner_rings(const Ring& outer) const noexcept
             {
                 inners_type inners;
                 for (const object_id_type& outer_ref : m_ring_map.at(outer.id()))
@@ -118,7 +140,7 @@ namespace model
              * 
              * @param outer The outer ring
              */
-            void add_outer(const OuterRing& outer)
+            void add_outer(const Ring& outer)
             {
                 assert(outer.id() == m_outers.size());
                 m_outers.push_back(outer);
@@ -132,12 +154,28 @@ namespace model
              * @param outer The outer ring in which the inner lies in
              * @param inner The inner ring
              */
-            void add_inner(const OuterRing& outer, const InnerRing& inner)
+            void add_inner(const Ring& outer, const Ring& inner)
             {
                 assert(inner.id() == m_inners.size());
                 m_inners.push_back(inner);
                 m_ring_map.at(outer.id()).push_back(inner.id());
             }
+
+            /**
+             * 
+             */
+            void add_way(const WayRef& way)
+            {
+                m_ways.push_back(way);
+            }
+
+            /**
+             * 
+             */
+            void add_ways(const EntityRefList<WayRef>& ways)
+            {
+                m_ways.insert(m_ways.end(), ways.begin(), ways.end());
+            } 
 
         };
         

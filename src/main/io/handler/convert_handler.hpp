@@ -5,8 +5,6 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
-#include <tuple>
-#include <unordered_set>
 #include <unordered_map>
 
 #include <boost/lexical_cast.hpp>
@@ -17,12 +15,11 @@
 #include <osmium/osm/types.hpp>
 #include <osmium/relations/relations_manager.hpp>
 
-#include "model/types.hpp"
-#include "model/memory/id.hpp"
-#include "model/memory/node.hpp"
-#include "model/memory/way.hpp"
-#include "model/memory/relation.hpp"
 #include "model/memory/buffer.hpp"
+#include "model/memory/node.hpp"
+#include "model/memory/relation.hpp"
+#include "model/memory/way.hpp"
+#include "model/type.hpp"
 
 namespace io
 {
@@ -47,7 +44,6 @@ namespace io
 
             /* Types */
 
-            using id_type     = model::memory::object_id_type;
             using osm_id_type = osmium::object_id_type;
 
             /**
@@ -75,9 +71,9 @@ namespace io
              * This bijective mapping ensures that all internal node ids are consecutive,
              * which is not guaranteed for osmium object ids.
              */
-            std::unordered_map<osm_id_type, id_type> m_nids;
-            std::unordered_map<osm_id_type, id_type> m_wids;
-            std::unordered_map<osm_id_type, id_type> m_rids;
+            std::unordered_map<osm_id_type, object_id_type> m_nids;
+            std::unordered_map<osm_id_type, object_id_type> m_wids;
+            std::unordered_map<osm_id_type, object_id_type> m_rids;
 
         public:
 
@@ -136,7 +132,7 @@ namespace io
                     return m_nodes.at(it->second); 
                 }
                 // Convert the osmium node and add the result to the node buffer
-                id_type mapped_id = m_nids.size();
+                object_id_type mapped_id = m_nids.size();
                 m_nids[osm_node.ref()] = mapped_id;
                 m_nodes.push_back({ mapped_id, osm_node.lon(), osm_node.lat() });
                 // Return a reference to the newly created node in the container
@@ -163,7 +159,7 @@ namespace io
                     return m_ways.at(it->second); 
                 }
                 // Convert the osmium way and add the result to the way buffer
-                id_type mapped_id = m_wids.size();
+                object_id_type mapped_id = m_wids.size();
                 m_wids[osm_way.id()] = mapped_id;
                 m_ways.push_back({ mapped_id });
                 // Add the osmium nodes to the created way and to the node buffer
@@ -195,7 +191,7 @@ namespace io
                 // Check if relation has a level that was specified to be
                 // filtered for.
                 const char* admin_level = osm_relation.tags().get_value_by_key("admin_level", "-1");
-                short level = boost::lexical_cast<short>(admin_level);
+                level_type level = boost::lexical_cast<level_type>(admin_level);
                 return level > 0 && m_filter.at(level) == true;
             }
 
@@ -207,7 +203,7 @@ namespace io
             {
                 // Convert the osmium relation to an internal relation and add the
                 // result to the relation buffer
-                id_type mapped_id = m_rids.size();
+                object_id_type mapped_id = m_rids.size();
                 m_rids[osm_relation.id()] = mapped_id;
                 // Create and add the new area
                 Relation relation = { mapped_id };
@@ -257,7 +253,7 @@ namespace io
 
                 // Check way's admin level
                 const char * admin_level = osm_way.get_value_by_key("admin_level", "-1");
-                short level = boost::lexical_cast<short>(admin_level);
+                level_type level = boost::lexical_cast<level_type>(admin_level);
                 if (level < 0 || !m_filter.at(level))
                 {
                     return;

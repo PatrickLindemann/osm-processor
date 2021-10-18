@@ -35,6 +35,8 @@ namespace model
                 this->push_back(RefType{ ref });
             }
 
+            using std::vector<RefType>::push_back;
+
         };
 
     }

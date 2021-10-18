@@ -2,12 +2,15 @@
 
 #include <cmath>
 
+#include "functions/util.hpp"
 #include "model/geometry/point.hpp"
 
 using namespace model;
 
 namespace functions
 {
+
+    using namespace model::geometry;
 
     const double QUARTER_PI = M_PI / 4.0;
 
@@ -27,7 +30,7 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        virtual geometry::Point<T> project(T x, T y) const = 0;
+        virtual Point<T> project(T x, T y) const = 0;
 
     };
 
@@ -46,9 +49,9 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {
-            return geometry::Point<T>{ x, y };
+            return Point<T>{ x, y };
         }
 
     };
@@ -103,11 +106,11 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {
             T tx = m_target_x.first + (diff_target_x / diff_source_x) * (x - m_source_x.first);
             T ty = m_target_y.first + (diff_target_y / diff_source_y) * (y - m_source_y.first);
-            return geometry::Point<T>{ tx, ty };
+            return Point<T>{ tx, ty };
         }
 
     };
@@ -184,9 +187,9 @@ namespace functions
          * @param x The x degree value
          * @param y The y degree value
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {
-            return geometry::Point<T>{ radians(x), radians(y) };
+            return Point<T>{ radians(x), radians(y) };
         }
 
     };
@@ -207,9 +210,9 @@ namespace functions
          * @param x The x radian value
          * @param y The y radian value
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {
-            return geometry::Point<T>{ degrees(x), degrees(y) };
+            return Point<T>{ degrees(x), degrees(y) };
         }
 
     };
@@ -251,11 +254,11 @@ namespace functions
          * @param x The x value (maps to longitude)
          * @param y The y value (maps to latitude)
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {   
-            T tx = normalize(x - m_center, -M_PI, M_PI);
+            T tx = clamp(x - m_center, -M_PI, M_PI);
             T ty = std::log(std::tan(QUARTER_PI + y / 2));
-            return geometry::Point<T>{ tx, ty };
+            return Point<T>{ tx, ty };
         }
 
     };
@@ -300,12 +303,12 @@ namespace functions
          * @param x The x value (maps to longitude)
          * @param y The y value (maps to latitude)
          */
-        geometry::Point<T> project(T x, T y) const override
+        Point<T> project(T x, T y) const override
         {   
             double cos_p = std::cos(m_parallel);
-            T tx = normalize(x - m_center, -M_PI, M_PI) * cos_p;
+            T tx = clamp(x - m_center, -M_PI, M_PI) * cos_p;
             T ty = std::sin(y) / cos_p;
-            return geometry::Point<T>{ tx, ty };
+            return Point<T>{ tx, ty };
         }
 
     };

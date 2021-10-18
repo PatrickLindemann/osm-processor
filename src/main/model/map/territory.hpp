@@ -5,7 +5,7 @@
 #include "model/geometry/multipolygon.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
-#include "model/map/entity.hpp"
+#include "model/map/boundary.hpp"
 
 namespace model
 {
@@ -15,20 +15,9 @@ namespace model
 
         using namespace model::geometry;
 
-        /**
-         * 
-         */
-        class TerritoryRef : public EntityRef
-        {
-        public:
+        class TerritoryRef : public BoundaryRef {};
 
-            /* Constructors */
-
-            TerritoryRef(id_type ref) : EntityRef(ref) {};
-
-        };
-
-        class Territory : public Entity
+        class Territory : public Boundary
         {
 
             /* Members */
@@ -51,13 +40,13 @@ namespace model
             /**
              * 
              */
-            MultiPolygon<double> m_geometry;
+            Polygon<double> m_geometry;
 
         public:
 
             /* Constructors */
 
-            Territory(id_type id) : Entity(id) {};
+            Territory(object_id_type id) : Boundary(id) {};
 
             /* Accessors */
 
@@ -91,12 +80,12 @@ namespace model
                 return m_neighbors;
             }
 
-            MultiPolygon<double>& geometry()
+            Polygon<double>& geometry()
             {
                 return m_geometry;
             }
 
-            const MultiPolygon<double>& geometry() const
+            const Polygon<double>& geometry() const
             {
                 return m_geometry;
             }

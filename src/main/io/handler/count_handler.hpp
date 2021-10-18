@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/lexical_cast.hpp>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -70,12 +71,14 @@ namespace io
          * A handler that counts the number of different values
          * for a tag with a specified key.
          */
+        template <typename T>
         class TagValueCountHandler : public osmium::handler::Handler {
         public:
 
             /* Types */
 
-            using map_type = std::map<std::string, size_t>;
+            using value_type = T;
+            using map_type = std::map<value_type, size_t>;
 
             /* Members */
 
@@ -111,14 +114,14 @@ namespace io
                 {
                     // Increase counters
                     ++m_total;
-                    ++m_value_counts[std::string(value)];
+                    ++m_value_counts[boost::lexical_cast<value_type>(value)];
                 }       
             }
 
             template <typename StreamType>
             void print(StreamType& stream) const
             {
-                util::Table<std::string, size_t> table{
+                util::Table<value_type, size_t> table{
                     { "Value", "Count" },
                     m_value_counts
                 };

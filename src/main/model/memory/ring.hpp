@@ -22,6 +22,7 @@ namespace model
             /* Constructors */
 
             Ring(object_id_type id) : Entity(id), EntityRefList() {};
+            Ring(object_id_type id, const EntityRefList<NodeRef>& nodes) : Entity(id), EntityRefList(nodes) {};
 
             /* Methods */
 
