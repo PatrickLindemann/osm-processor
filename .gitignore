@@ -1,8 +1,14 @@
-# Ignore the build and lib dirs
-build
-out
-
-# Ignore vs code dirs
+# IDE directories
 .cache
 .vscode
 .clangd
+
+# Build and library directories
+build
+build-win
+
+# Configs & Settings
+config.json
+
+# Output directories
+out
