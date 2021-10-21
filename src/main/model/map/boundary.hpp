@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/type.hpp"
+#include <ostream>
 
 namespace model
 {
@@ -37,13 +38,13 @@ namespace model
 
             object_id_type m_ref;
         
-        protected:
+        public:
 
             /* Constructors */
 
             BoundaryRef(object_id_type ref) : m_ref(ref) {};
 
-        public:
+            /* Accessors */
 
             const object_id_type& ref() const
             {
@@ -51,6 +52,11 @@ namespace model
             }
 
         };
+
+        std::ostream& operator<<(std::ostream& out, const BoundaryRef& br)
+        {
+            return out << br.ref();
+        }
 
     }
 

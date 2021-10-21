@@ -14,11 +14,11 @@ if ( WIN32 )
         SOURCE_SUBDIR expat
         GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/libexpat/libexpat"
         GIT_TAG master
-        GIT_PROGRESS true
+        GIT_PROGRESS ON
         TIMEOUT 10
         UPDATE_COMMAND ""
         CMAKE_ARGS
-            -DCMAKE_INSTALL_PREFIX=${ZLIB_INSTALL_DIR}
+            -DCMAKE_INSTALL_PREFIX=${EXPAT_INSTALL_DIR}
     )
 else()
     ExternalProject_Add(
@@ -42,7 +42,10 @@ else()
     )
 endif()
 
-
 # Set include and library paths
 set( EXPAT_INCLUDE_DIR ${EXPAT_INSTALL_DIR}/include )
-set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.a )
+if ( WIN32 )
+    set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.dll.a )
+else()
+    set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.a )
+endif()

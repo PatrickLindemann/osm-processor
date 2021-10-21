@@ -12,7 +12,9 @@
 #include "model/map/bonus.hpp"
 #include "model/map/map.hpp"
 #include "model/map/territory.hpp"
+#include "model/config.hpp"
 #include "util/time.hpp"
+#include "util/join.hpp"
 
 using namespace model;
 
@@ -26,40 +28,49 @@ namespace io
         {
             
             template <typename StreamType, typename T>
-            void write_geometry(StreamType& stream, const geometry::MultiPolygon<T>& geometry)
+            void write_geometry(StreamType& stream, const geometry::Polygon<T>& geometry)
             {
-                for (const auto& polygon : geometry)
-                {
-                    // Add outer points (clockwise)
-                    stream << "\"M ";
-                    for (auto it = polygon.outer.begin(); it != polygon.outer.end(); ++it)
-                    {   
-                        if (it == polygon.outer.begin() + 1)
-                        {
-                            stream << "L ";
-                        }
-                        stream << it->x << " " << it->y << " ";
-                    }
-                    stream << "Z";
-                    if (polygon.inners.size() > 0)
+                // Add outer points (clockwise)
+                stream << "M ";
+                for (auto it = geometry.outer().begin(); it != geometry.outer().end(); ++it)
+                {   
+                    if (it == geometry.outer().begin() + 1)
                     {
-                        // Add inner points (counter-clockwise)
-                        for (const auto& inner : polygon.inners)
-                        {
-                            stream << " M ";
-                            for (auto it = inner.rbegin(); it != inner.rend(); ++it)
-                            {   
-                                if (it == inner.rbegin() + 1)
-                                {
-                                    stream << "L ";
-                                }
-                                stream << it->x << " " << it->y << " ";
+                        stream << "L ";
+                    }
+                    stream << it->x() << " " << it->y() << " ";
+                }
+                stream << "Z";
+                if (geometry.inners().size() > 0)
+                {
+                    // Add inner points (counter-clockwise)
+                    for (const geometry::Ring<T>& inner : geometry.inners())
+                    {
+                        stream << " M ";
+                        for (auto it = inner.rbegin(); it != inner.rend(); ++it)
+                        {   
+                            if (it == inner.rbegin() + 1)
+                            {
+                                stream << "L ";
                             }
-                            stream << "Z";
+                            stream << it->x() << " " << it->y() << " ";
                         }
+                        stream << "Z";
                     }
                 }
-                stream << "\""; // End value
+            }
+
+            template <typename StreamType, typename T>
+            void write_geometry(StreamType& stream, const geometry::MultiPolygon<T>& geometry)
+            {
+                for (auto it = geometry.polygons().begin(); it != geometry.polygons().end(); it++)
+                {
+                    if (it != geometry.polygons().begin())
+                    {
+                        stream << " ";
+                    }
+                    write_geometry(stream, *it);
+                }
             }
 
         }
@@ -67,10 +78,22 @@ namespace io
         /**
          * 
          */
-        template <typename T>
-        void write_metadata(std::string file_path, const map::Map<T>& map)
+        void write_config(std::string file_path, const Config& config)
         {
-            std::ofstream out{ file_path + ".json", std::ios::trunc };
+            std::ofstream out{ file_path, std::ios::trunc };
+            out << '{'
+                << "\"email\":" << '"' << config.email << '"' << ','
+                << "\"api-token\":" << '"' << config.api_token << '"'
+                << '}'
+                << std::endl;
+        }
+
+        /**
+         * 
+         */
+        void write_metadata(std::string file_path, const map::Map& map)
+        {
+            std::ofstream out{ file_path, std::ios::trunc };
             out.precision(4);
 
             // Write headers
@@ -80,35 +103,46 @@ namespace io
                 << "\"levels\":" << '[' << util::join(map.levels()) << ']' << ',';
 
             // Write boundary information
-            out << "\"boundaries\":" << '[';
+            out << "\"boundaries\":" << '{';
             // Write territories
             out << "\"territories\":" << '[';
-            for (const map::Territory<T>& territory : map.territories())
+            for (auto it = map.territories().cbegin(); it != map.territories().cend(); it++)
             {
-                out << "\"id\":" << territory.id() << ','
-                    << "\"name\":" << '\"' << territory.name() << '\"' << ','
+                if (it != map.territories().cbegin())
+                {
+                    out << ',';
+                }
+                out << '{'
+                    << "\"id\":" << it->id() << ','
+                    << "\"name\":" << '\"' << it->name() << '\"' << ','
                     << "\"center\":" << '['
-                        << territory.center().x << ','
-                        << territory.center().y
+                        << it->center().x() << ','
+                        << it->center().y()
                     << ']' << ','
-                    << "\"neighbors\":" << '['
-                        << util::join(territory.neighbors())
-                    << ']';
+                    << "\"neighbors\":" << '[' << util::join(it->neighbors()) << ']'
+                    << '}';
             }
             out << ']'; // End territories
             // Write bonuses
+            out << ',';
             out << "\"bonuses\":[";
-            for (const map::Bonus<T>& bonus : map.bonuses())
+            for (auto it = map.bonuses().cbegin(); it != map.bonuses().cend(); it++)
             {
-                out << "\"id\":" << bonus.id() << ','
-                    << "\"name\":" << '\"' << bonus.name() << '\"' << ','
-                    << "\"color\":" << '\"' << bonus.color() << '\"' << ','
-                    << "\"armies\":" << '\"' << bonus.armies() << '\"' << ','
-                    << "\"super_bonus\":" << '\"' << bonus.is_super() << '\"' << ','
-                    << "\"children\":" << '[' << util::join(bonus.children()) << ']';
+                if (it != map.bonuses().cbegin())
+                {
+                    out << ',';
+                }
+                out << '{'
+                    << "\"id\":" << it->id() << ','
+                    << "\"name\":" << '\"' << it->name() << '\"' << ','
+                    << "\"color\":" << '\"' << it->color() << '\"' << ','
+                    << "\"armies\":" << '\"' << it->armies() << '\"' << ','
+                    << "\"super_bonus\":" << '\"' << it->is_super() << '\"' << ','
+                    << "\"children\":" << '[' << util::join(it->children()) << ']'
+                    << '}';
             }
             out << ']'; // End bonues
-            out << ']'; // End boundaries
+            out << '}'; // End boundaries
 
             out << "}" << std::endl; // End file
         }
@@ -116,10 +150,9 @@ namespace io
         /**
          * 
          */
-        template <typename T>
-        void write_map(std::string file_path, const map::Map<T>& map)
+        void write_map(std::string file_path, const map::Map& map)
         {
-            std::ofstream out{ file_path + ".svg", std::ios::trunc };
+            std::ofstream out{ file_path, std::ios::trunc };
             out.precision(4);
 
             if (!out.is_open())
@@ -135,71 +168,46 @@ namespace io
             << ">";
 
             // Write Connections
+            // TODO
 
             // Write bonuses in their order first
-
-            // Write territories
-            for (const map::Territory<T>& territory : map.territories())
+            // TODO with hirarchy
+            for (const map::Bonus& bonus : map.bonuses())
             {
-                // Ignore bonus links for now
                 out << "<path "
-                    << "id=\"Territory_" << territory.id() << "\" "
-                    << "style=\"fill: blue; stroke:black; stroke-width: 1px;\" "
+                    << "style=\"fill: " << bonus.color() << "; stroke:black; stroke-width: 2px;\" "
                     << "d=\"";
-                detail::write_geometry(out, territory.geometry());
-                out << "/>"; // End path
+                detail::write_geometry(out, bonus.geometry());
+                out << "\"/>"; // End path
             }
 
-            // Write Bonus Links
-
-            out << "</svg>" << std::endl; // End file
-        }
-
-        /**
-         * 
-         */
-        template <typename T>
-        void write_preview(std::string file_path, const map::Map<T>& map)
-        {
-            /*
-            // Draw envelopes
-            for (const auto& boundary : map.boundaries())
+            // Write territories
+            for (const map::Territory& territory : map.territories())
             {
-                for (const auto& poly : boundary.geometry().polygons)
-                {
-                    auto envelope = mapmaker::algorithm::envelope(poly);
-                    out << "<rect "
-                        << "id=\"" << boundary.id() << "\" "
-                        << "x=\"" << envelope.min.x << "\" "
-                        << "y=\"" << envelope.min.y << "\" "
-                        << "width=\"" << envelope.width() << "\" "
-                        << "height=\"" << envelope.height() << "\" "
-                        << "fill=\"none\" " 
-                        << "stroke=\"red\" " 
-                        << "stroke-width=\"1\"" 
-                        << "/>";
-                }
+                out << "<path "
+                    << "id=\"Territory_" << territory.id() << "\" "
+                    << "style=\"stroke:black; fill:none; stroke-width: 1px;\" "
+                    << "d=\"";
+                detail::write_geometry(out, territory.geometry());
+                out << "\"/>"; // End path
+            }
+
+            // Write centers
+            for (const map::Territory& territory : map.territories())
+            {
                 out << "<circle "
-                    << "id=\"Center_" << boundary.id() << "\" "
-                    << "cx=\"" << boundary.center().x << "\" "
-                    << "cy=\"" << boundary.center().y << "\" "
+                    << "id=\"Center_" << territory.id() << "\" "
+                    << "cx=\"" << territory.center().x() << "\" "
+                    << "cy=\"" << territory.center().y() << "\" "
                     << "r=\"2\" "
                     << "fill=\"black\""
                     << "/>";
-                out << "<circle "
-                    << "id=\"Center_Radius_" << boundary.id() << "\" "
-                    << "cx=\"" << boundary.center().x << "\" "
-                    << "cy=\"" << boundary.center().y << "\" "
-                    << "r=\"20\" "
-                    << "fill=\"none\" "
-                    << "stroke=\"black\" "
-                    << "stroke-width=\"1\""
-                    << "/>";
             }
 
-            // Add footers
-            out << "</svg>" << std::endl;
-            */      
+            // Write Bonus Links
+            // TODO
+
+            out << "</svg>" << std::endl; // End file
         }
         
     }

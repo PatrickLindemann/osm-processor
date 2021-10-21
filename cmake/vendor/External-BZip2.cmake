@@ -12,7 +12,7 @@ ExternalProject_Add(
     INSTALL_DIR ${BZIP2_INSTALL_DIR}
     GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/commontk/bzip2.git"
     GIT_TAG master
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     UPDATE_COMMAND ""
     CMAKE_ARGS

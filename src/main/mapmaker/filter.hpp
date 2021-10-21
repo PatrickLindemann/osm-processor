@@ -1,9 +1,11 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 
 #include "functions/area.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/graph/edge.hpp"
 #include "model/graph/undirected_graph.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
@@ -38,6 +40,7 @@ namespace mapmaker
 
             memory::Buffer<memory::Area>& m_area_buffer;
             memory::Buffer<memory::Relation>& m_relation_buffer;
+            graph::UndirectedGraph& m_neighbors;
             component_map_type& m_components;
             const memory::Buffer<memory::Node>& m_node_buffer;
             const memory::Buffer<memory::Way>& m_way_buffer;
@@ -49,11 +52,12 @@ namespace mapmaker
             AreaFilter(
                 memory::Buffer<memory::Area>& areas,
                 memory::Buffer<memory::Relation>& relations,
+                graph::UndirectedGraph& neighbors,
                 component_map_type& components,
                 const memory::Buffer<memory::Node>& nodes,
                 const memory::Buffer<memory::Way>& ways
-            ) : m_area_buffer(areas), m_relation_buffer(relations), m_components(components),
-                m_node_buffer(nodes), m_way_buffer(ways) {};
+            ) : m_area_buffer(areas), m_relation_buffer(relations), m_neighbors(neighbors),
+                m_components(components), m_node_buffer(nodes), m_way_buffer(ways) {};
                 
             /* Methods */
 
@@ -71,7 +75,7 @@ namespace mapmaker
             {
 
                 std::vector<bool> removed_areas(m_area_buffer.size());
-                std::vector<bool> removed_ways(m_way_buffer.size(), true);
+                std::vector<bool> removed_ways(m_way_buffer.size());
 
                 // Pre-calculate the surface areas for areas with the
                 // specified level and compute the total surface area
@@ -104,7 +108,8 @@ namespace mapmaker
                     }
                     // Check if the relative component area to total area
                     // ratio is lower than the specified threshold
-                    if (component_surface_area / total_surface_area < threshold)
+                    double relative_surface_area = component_surface_area / total_surface_area;
+                    if (relative_surface_area < threshold)
                     {
                         // Mark all areas and their way references in that component
                         // for removal
@@ -139,12 +144,13 @@ namespace mapmaker
                 }
 
                 // Remove marked areas from the buffer and perform
-                // an area reindex.
+                // an area reindex (on the buffer and graph)
                 id_map_type a_ids;
                 memory::Buffer<memory::Area> new_area_buffer;
+                graph::UndirectedGraph new_neighbors;
                 for (const memory::Area& area : m_area_buffer)
                 {
-                    if (removed_areas.at(area.id()))
+                    if (!removed_areas.at(area.id()))
                     {
                         object_id_type mapped_id = a_ids.size();
                         a_ids[area.id()] = mapped_id;
@@ -173,10 +179,23 @@ namespace mapmaker
                             }
                         }
                         new_area_buffer.push_back(new_area);
+                        new_neighbors.insert_vertex(mapped_id);
                     }
                 }
                 std::swap(m_area_buffer, new_area_buffer);
 
+                // Add the new neighbor edges
+                for (const graph::edge_type& edge : m_neighbors.edges())
+                {
+                    if (!removed_areas.at(edge.first) && !removed_areas.at(edge.second))
+                    {
+                        const graph::vertex_type& v1 = a_ids.at(edge.first);
+                        const graph::vertex_type& v2 = a_ids.at(edge.second);
+                        new_neighbors.vertices().insert(v1);
+                        new_neighbors.edges().insert({ v1, v2 });
+                    }
+                }
+                std::swap(m_neighbors, new_neighbors);
             }
 
         };

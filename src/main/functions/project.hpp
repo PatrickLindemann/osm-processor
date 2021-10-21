@@ -10,8 +10,6 @@ using namespace model;
 namespace functions
 {
 
-    using namespace model::geometry;
-
     const double QUARTER_PI = M_PI / 4.0;
 
     /**
@@ -30,7 +28,7 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        virtual Point<T> project(T x, T y) const = 0;
+        virtual geometry::Point<T> project(T x, T y) const = 0;
 
     };
 
@@ -39,7 +37,7 @@ namespace functions
      * [x, y] -> [x, y]
      */
     template <typename T>
-    class IdentityProjection : virtual public Projection<T>
+    class IdentityProjection : public Projection<T>
     {
     public:
 
@@ -49,9 +47,9 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {
-            return Point<T>{ x, y };
+            return geometry::Point<T>{ x, y };
         }
 
     };
@@ -106,11 +104,11 @@ namespace functions
          * @param x The x value
          * @param y The y value
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {
             T tx = m_target_x.first + (diff_target_x / diff_source_x) * (x - m_source_x.first);
             T ty = m_target_y.first + (diff_target_y / diff_source_y) * (y - m_source_y.first);
-            return Point<T>{ tx, ty };
+            return geometry::Point<T>{ tx, ty };
         }
 
     };
@@ -187,9 +185,9 @@ namespace functions
          * @param x The x degree value
          * @param y The y degree value
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {
-            return Point<T>{ radians(x), radians(y) };
+            return geometry::Point<T>{ radians(x), radians(y) };
         }
 
     };
@@ -210,9 +208,9 @@ namespace functions
          * @param x The x radian value
          * @param y The y radian value
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {
-            return Point<T>{ degrees(x), degrees(y) };
+            return geometry::Point<T>{ degrees(x), degrees(y) };
         }
 
     };
@@ -254,11 +252,11 @@ namespace functions
          * @param x The x value (maps to longitude)
          * @param y The y value (maps to latitude)
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {   
             T tx = clamp(x - m_center, -M_PI, M_PI);
             T ty = std::log(std::tan(QUARTER_PI + y / 2));
-            return Point<T>{ tx, ty };
+            return geometry::Point<T>{ tx, ty };
         }
 
     };
@@ -303,12 +301,12 @@ namespace functions
          * @param x The x value (maps to longitude)
          * @param y The y value (maps to latitude)
          */
-        Point<T> project(T x, T y) const override
+        geometry::Point<T> project(T x, T y) const override
         {   
             double cos_p = std::cos(m_parallel);
             T tx = clamp(x - m_center, -M_PI, M_PI) * cos_p;
             T ty = std::sin(y) / cos_p;
-            return Point<T>{ tx, ty };
+            return geometry::Point<T>{ tx, ty };
         }
 
     };

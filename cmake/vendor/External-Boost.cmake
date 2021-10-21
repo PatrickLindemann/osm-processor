@@ -28,7 +28,7 @@ ExternalProject_Add(
     GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/boostorg/boost.git"
     GIT_TAG master
     GIT_SUBMODULES  ${BOOST_SUBMODULES}
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     BUILD_IN_SOURCE 1
     UPDATE_COMMAND ""

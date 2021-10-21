@@ -10,7 +10,7 @@ ExternalProject_Add(
     PREFIX ${RAPIDJSON_ROOT_DIR}
     GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/Tencent/rapidjson.git"
     GIT_TAG master
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""

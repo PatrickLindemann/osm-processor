@@ -17,6 +17,7 @@
 #include "handler/count_handler.hpp"
 #include "handler/bounds_handler.hpp"
 #include "handler/convert_handler.hpp"
+#include "model/config.hpp"
 #include "model/container.hpp"
 #include "model/memory/node.hpp"
 #include "model/memory/way.hpp"
@@ -24,18 +25,23 @@
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
 
+using namespace model;
+
 namespace io
 {
 
     namespace reader
     {
 
-        using namespace model;
+        Config read_config(const std::string& file_path)
+        {
+            return Config{ };
+        }
 
         /**
          * 
          */
-        InfoContainer get_info(const std::string& file_path)
+        InfoContainer read_info(const std::string& file_path)
         {
             // The Reader is initialized here with an osmium::io::File, but could
             // also be directly initialized with a file name.
@@ -85,7 +91,7 @@ namespace io
         /**
          * 
          */
-        DataContainer get_data(
+        DataContainer read_data(
             const std::string& file_path,
             level_type territory_level,
             std::vector<level_type> bonus_levels

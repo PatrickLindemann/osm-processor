@@ -19,8 +19,11 @@ namespace routine
         
         /* Main function */
 
-        void run(const std::vector<std::string>& args)
+        void run(int argc, char* argv[])
         {
+            argc--;
+            argv++;
+
             // Define variables
             fs::path input;
 
@@ -37,7 +40,7 @@ namespace routine
 
             // Parse the specified arguments
             po::variables_map vm;
-            po::store(po::command_line_parser(args)
+            po::store(po::command_line_parser(argc, argv)
                 .options(options)
                 .positional(positional)
                 .run(), vm);
@@ -48,7 +51,7 @@ namespace routine
             util::validate_file("input", input);
 
             // Read the file info and print it to the console
-            model::InfoContainer info = io::reader::get_info(input.string());
+            model::InfoContainer info = io::reader::read_info(input.string());
             info.print(std::cout);
 
         }

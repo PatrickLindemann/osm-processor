@@ -30,17 +30,22 @@ namespace model
             /**
              * 
              */
-            Point<double> m_center;
-
-            /**
-             * 
-             */
             std::vector<TerritoryRef> m_neighbors;
 
             /**
              * 
              */
             Polygon<double> m_geometry;
+
+            /**
+             * 
+             */
+            Point<double> m_center;
+
+            /**
+             * 
+             */
+            Rectangle<double> m_bounds;
 
         public:
 
@@ -58,16 +63,6 @@ namespace model
             const std::string& name() const
             {
                 return m_name;
-            }
-
-            Point<double>& center()
-            {
-                return m_center;
-            }
-
-            const Point<double>& center() const
-            {
-                return m_center;
             }
 
             std::vector<TerritoryRef>& neighbors()
@@ -88,6 +83,26 @@ namespace model
             const Polygon<double>& geometry() const
             {
                 return m_geometry;
+            }
+            
+            Point<double>& center()
+            {
+                return m_center;
+            }
+
+            const Point<double>& center() const
+            {
+                return m_center;
+            }
+
+            Rectangle<double>& bounds()
+            {
+                return m_bounds;
+            }
+
+            const Rectangle<double>& bounds() const
+            {
+                return m_bounds;
             }
 
         };    

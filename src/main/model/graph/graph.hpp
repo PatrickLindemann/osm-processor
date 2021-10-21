@@ -95,17 +95,35 @@ namespace model
             }
 
             /**
+             * Inserts a vertex into the graph.
+             * 
+             * @param vertex The vertex
+             */
+            virtual void insert_vertex(vertex_type vertex)
+            {
+                m_vertices.insert(vertex);
+            };
+
+            /**
              * Checks if a vertex exists in the graph.
              * 
              * @param vertex The vertex
              * @returns      True If the vertex exists
-             * 
-             * Time complexity: Constant
              */
             virtual bool contains_vertex(const vertex_type& vertex) const
             {
                 return m_vertices.find(vertex) != m_vertices.end();
             }
+
+            /**
+             * Removes a vertex from the graph.
+             * 
+             * @param vertex The vertex
+             */
+            virtual void remove_vertex(const vertex_type& vertex)
+            {
+                m_vertices.erase(vertex);
+            };
 
             /* Edge methods */
 
@@ -145,10 +163,15 @@ namespace model
              * 
              * @param edge  The edge as <vertex, vertex> pair
              * @returns     True If the edge exists
-             * 
-             * Time complexity: Logarithmic
              */
             virtual bool contains_edge(const edge_type& edge) const = 0;
+
+            /**
+             * Removes an edge from the graph if it exists
+             * 
+             * @param edge  The edge as <vertex, vertex> pair
+             */
+            virtual void remove_edge(const edge_type& edge) = 0;
 
             /* Other methods */
 

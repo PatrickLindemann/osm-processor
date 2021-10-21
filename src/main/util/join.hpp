@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -10,22 +11,23 @@ namespace util
      * Joins a list of values into a string while separating
      * the values with a specified delimiter.
      * 
-     * @param list      The list collection
+     * @param list      The list
      * @param delimiter The delimiter string
      * @returns         The list as string representation
      */
-    std::string join(const std::vector<std::string>& list, std::string delimiter = ",")
+    template <typename T>
+    std::string join(const std::vector<T>& list, std::string delimiter = ",")
     {
-        std::string result = "";
+        std::stringstream stream;
         for (auto it = list.begin(); it != list.end(); it++)
         {
             if (it != list.begin())
             {
-                result += ", ";
+                stream << ", ";
             }
-            result += *it;
+            stream << *it;
         }
-        return result;
+        return stream.str();
     }
 
 }

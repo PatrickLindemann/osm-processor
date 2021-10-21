@@ -12,7 +12,7 @@ ExternalProject_Add(
     INSTALL_DIR ${ZLIB_INSTALL_DIR}
     GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/madler/zlib"
     GIT_TAG master
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     UPDATE_COMMAND ""
     CMAKE_ARGS
@@ -22,7 +22,7 @@ ExternalProject_Add(
 # Set include and library paths
 set( ZLIB_INCLUDE_DIR ${ZLIB_INSTALL_DIR}/include )
 if ( WIN32 )
-    set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libz.lib )
+    set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libzlib.dll.a )
 else()
     set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libz.a )
 endif()

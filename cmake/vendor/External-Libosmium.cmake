@@ -67,7 +67,7 @@ ExternalProject_Add(
     PREFIX ${OSMIUM_ROOT_DIR}
     GIT_REPOSITORY "https://github.com/osmcode/libosmium.git"
     GIT_TAG master
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""

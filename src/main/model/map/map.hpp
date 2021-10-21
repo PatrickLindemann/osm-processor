@@ -28,12 +28,22 @@ namespace model
             /**
              * 
              */
+            std::string m_name;
+
+            /**
+             * 
+             */
             size_t m_width;
 
             /**
              * 
              */
             size_t m_height;
+
+            /**
+             * 
+             */
+            std::vector<level_type> m_levels;
 
             /**
              * 
@@ -53,6 +63,16 @@ namespace model
 
             /* Accessors */
 
+            std::string& name()
+            {
+                return m_name;
+            }
+
+            const std::string& name() const
+            {
+                return m_name;
+            }
+    
             size_t& width()
             {
                 return m_width;
@@ -71,6 +91,16 @@ namespace model
             const size_t& height() const
             {
                 return m_height;
+            }
+
+            std::vector<level_type>& levels()
+            {
+                return m_levels;
+            }
+
+            const std::vector<level_type>& levels() const
+            {
+                return m_levels;
             }
 
             std::vector<Territory>& territories()

@@ -53,6 +53,11 @@ namespace model
             /**
              * 
              */
+            Rectangle<double> m_bounds;
+
+            /**
+             * 
+             */
             Rectangle<double> m_bonus_link;
 
         public:
@@ -113,6 +118,16 @@ namespace model
                 return m_geometry;
             }
 
+            Rectangle<double>& bounds()
+            {
+                return m_bounds;
+            }
+
+            const Rectangle<double>& bounds() const
+            {
+                return m_bounds;
+            }
+            
             Rectangle<double>& bonus_link()
             {
                 return m_bonus_link;
@@ -125,28 +140,9 @@ namespace model
 
             /* Virtual methods */
 
-            virtual bool is_regular() const = 0;
-
-            virtual bool is_super() const = 0;
-
-        };
-
-        class RegularBonus : public Bonus
-        {
-        public:
-
-            using Bonus::Bonus;
-
-            /* Methods */
-
-            bool is_super() const override
+            virtual bool is_super() const 
             {
                 return false;
-            }
-
-            bool is_regular() const override
-            {
-                return true;
             }
 
         };
@@ -159,17 +155,10 @@ namespace model
         public:
 
             using Bonus::Bonus;
-            
-            /* Methods */
 
             bool is_super() const override
             {
                 return true;
-            }
-
-            bool is_regular() const override
-            {
-                return false;
             }
 
         };

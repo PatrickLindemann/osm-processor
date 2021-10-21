@@ -4,15 +4,18 @@
 #include <vector>
 #include <unordered_map>
 
+#include "functions/envelope.hpp"
 #include "model/geometry/multipolygon.hpp"
 #include "model/geometry/polygon.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/graph/undirected_graph.hpp"
 #include "model/map/map.hpp"
 #include "model/map/bonus.hpp"
 #include "model/map/territory.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
 #include "model/type.hpp"
+#include "util/color.hpp"
 
 namespace mapmaker
 {
@@ -30,18 +33,20 @@ namespace mapmaker
         {
 
             /* Members */
-
-            const memory::Buffer<memory::Area>& m_areas;
-            const memory::Buffer<memory::Node>& m_nodes;
+           
+            const memory::Buffer<memory::Node>& m_node_buffer;
+            const memory::Buffer<memory::Area>& m_area_buffer;
+            const graph::UndirectedGraph& m_neighbor_graph;
 
         public:
 
             /* Constructors */
 
             MapBuilder(
+                const memory::Buffer<memory::Node>& nodes,
                 const memory::Buffer<memory::Area>& areas,
-                const memory::Buffer<memory::Node>& nodes
-            ) : m_areas(areas), m_nodes(nodes) {}
+                const graph::UndirectedGraph& neighbors
+            ) : m_node_buffer(nodes), m_area_buffer(areas), m_neighbor_graph(neighbors) {}
 
         protected:
 
@@ -62,7 +67,7 @@ namespace mapmaker
                 geometry::Ring<double> geometry;
                 for (const memory::NodeRef& node : ring)
                 {
-                    geometry.push_back(m_nodes.at(node).point());
+                    geometry.push_back(m_node_buffer.at(node).point());
                 }
                 return geometry;
             }
@@ -124,6 +129,7 @@ namespace mapmaker
              * 
              */
             map::Map build_map(
+                std::string name,
                 int width,
                 int height,
                 level_type territory_level,
@@ -131,45 +137,52 @@ namespace mapmaker
             ) {
                 // Create the map with the specified width and height
                 map::Map map;
+                map.name() = name;
                 map.width() = width;
                 map.height() = height;
-
-                // Determine the lowest bonus level
-                level_type min_bonus_level;
-                if (!bonus_levels.empty())
-                {
-                    min_bonus_level = *std::min_element(bonus_levels.begin(), bonus_levels.end());
-                }
+                map.levels() = bonus_levels;
+                map.levels().push_back(territory_level);
 
                 // Convert the areas from the area buffer
-                for (const memory::Area& area : m_areas)
+                for (const memory::Area& area : m_area_buffer)
                 {
                     if (area.level() == territory_level)
                     {
                         // Area is a territory area
                         assert(area.outer_rings().size() == 1);
+                        assert(area.id() == map.territories().size());
 
                         // Retrieve outer and inner rings from the area
                         const memory::Ring& outer = area.outer_rings().at(0);
                         const std::vector<memory::Ring>& inners = area.inner_rings(outer);
 
                         // Create the territory and convert the geometry
-                        map::Territory territory( map.territories().size() );
+                        map::Territory territory( area.id() );
                         territory.name() = area.name();
                         territory.geometry() = create_polygon(outer, inners);
+                        territory.bounds() = functions::envelope(territory.geometry());
+
+                        // Save the territoy neighbors
+                        const std::vector<object_id_type> neighbors = m_neighbor_graph.adjacents(area.id());
+                        for (const object_id_type neighbor : neighbors)
+                        {
+                            territory.neighbors().push_back({ neighbor });
+                        }
 
                         // Add the territory to the map
                         map.territories().push_back(territory);
                     }
-                    else if (area.level() == min_bonus_level)
+                    else if (area.level() == bonus_levels.at(0))
                     {
                         // Area is a regular bonus area
                         assert(area.outer_rings().size() >= 1);
 
                         // Create the bonus and convert the geometry
-                        map::RegularBonus bonus( map.bonuses().size() );
+                        map::Bonus bonus( map.bonuses().size() );
                         bonus.name() = area.name();
                         bonus.geometry() = create_multipolygon(area);
+                        bonus.bounds() = functions::envelope(bonus.geometry());
+                        bonus.color() = util::hsl_to_hex(rand() % 360, 1, 1);
 
                         // Add the bonus to the map
                         map.bonuses().push_back(bonus);
@@ -183,7 +196,9 @@ namespace mapmaker
                         map::SuperBonus bonus( map.bonuses().size() );
                         bonus.name() = area.name();
                         bonus.geometry() = create_multipolygon(area);
-
+                        bonus.bounds() = functions::envelope(bonus.geometry());
+                        bonus.color() = util::hsl_to_hex(rand() % 360, 1, 1);
+                        
                         // Add the bonus to the map
                         map.bonuses().push_back(bonus);
                     }
@@ -191,6 +206,11 @@ namespace mapmaker
 
                 return map;
             } 
+
+        };
+
+        class HirarchyBuilder
+        {
 
         };
 

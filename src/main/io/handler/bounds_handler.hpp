@@ -31,13 +31,15 @@ namespace io
          */
         class BoundsHandler : public osmium::handler::Handler {
 
+            std::numeric_limits<double> limits;
+
             /**
              * The min and max node coordinates.
              */
-            double m_lon_min = DBL_MAX;
-            double m_lat_min = DBL_MAX;
-            double m_lon_max = -DBL_MAX;
-            double m_lat_max = -DBL_MAX;
+            double m_lon_min = limits.max();
+            double m_lat_min = limits.max();
+            double m_lon_max = -limits.max();
+            double m_lat_max = -limits.max();
 
         public:
 

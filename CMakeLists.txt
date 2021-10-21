@@ -21,6 +21,12 @@ if ( UNIX )
     add_compile_options( -I/usr/include/c++/9 -I/usr/include/x86_64-linux-gnu/c++/9 )
 endif()
 
+if ( WIN32 )
+    # These flags are needed for windows builds with MinGW in order to prevent
+    # the "too many sections" errors
+    set(CMAKE_CXX_FLAGS "-Wa,-mbig-obj")
+endif()
+
 ###############################################################################
 ## file globbing ##############################################################
 ###############################################################################

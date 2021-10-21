@@ -345,6 +345,7 @@ namespace mapmaker
                 memory::Buffer<memory::Area>& buffer,
                 std::string name,
                 level_type level,
+                object_id_type original_id,
                 const std::vector<ProtoGroup>& groups
             ) const = 0;
 
@@ -404,7 +405,7 @@ namespace mapmaker
                     const auto groups = group_rings(outer_rings, inner_rings);
 
                     // Create the area
-                    this->create_areas(buffer, name, level, groups);
+                    this->create_areas(buffer, name, level, relation.id(), groups);
                 }
 
             }
@@ -435,30 +436,35 @@ namespace mapmaker
                 memory::Buffer<memory::Area>& areas,
                 std::string name,
                 level_type level,
+                object_id_type original_id,
                 const std::vector<ProtoGroup>& groups
             ) const override {
-                // Retrieve the group
-                assert(groups.size() == 1);
-                ProtoGroup group = groups.at(0);
-
-                // Prepare the result area
-                memory::Area area( areas.size(), name, level );
-
-                // Convert and add outer ring
-                memory::Ring outer( 0, group.outer.nodes );
-                area.add_outer(outer);
-                area.add_ways(group.outer.ways);
-
-                // Convert and add inner rings
-                for (size_t i = 0; i < group.inners.size(); i++)
+                // Create a new area for each group
+                for (size_t i = 0; i < groups.size(); i++)
                 {
-                    memory::Ring inner( i, group.inners.at(i).nodes) ;
-                    area.add_inner(outer, inner);
-                    area.add_ways(group.inners.at(i).ways);
-                }
+                    // Prepare the result area
+                    memory::Area area( areas.size(), name, level, original_id );
 
-                // Add the created area to the buffer
-                areas.push_back(area);
+                    // Retrieve the group
+                    ProtoGroup group = groups.at(i);
+
+                    // Convert and add outer ring
+                    memory::Ring outer( 0, group.outer.nodes );
+                    area.add_outer(outer);
+                    area.add_ways(group.outer.ways);
+
+                    // Convert and add inner rings
+                    for (size_t j = 0; j < group.inners.size(); j++)
+                    {
+                        const ProtoRing& inner_proto = group.inners.at(i);
+                        memory::Ring inner(j, inner_proto.nodes) ;
+                        area.add_inner(outer, inner);
+                        area.add_ways(inner_proto.ways);
+                    }
+
+                    // Add the created area to the buffer
+                    areas.push_back(area);
+                }
             }
 
         public:
@@ -481,11 +487,13 @@ namespace mapmaker
                 memory::Buffer<memory::Area>& areas,
                 std::string name,
                 level_type level,
+                object_id_type original_id,
                 const std::vector<ProtoGroup>& groups
             ) const override {
                 // Prepare the result area
-                memory::Area area( areas.size(), name, level );
+                memory::Area area( areas.size(), name, level, original_id );
 
+                // Add all ring groups to the area
                 object_id_type inner_id = 0;
                 for (size_t i = 0; i < groups.size(); i++)
                 {
@@ -498,11 +506,11 @@ namespace mapmaker
                     area.add_ways(group.outer.ways);
 
                     // Convert and add inner rings
-                    for (const ProtoRing& i_con : group.inners)
+                    for (const ProtoRing& inner_proto : group.inners)
                     {
-                        memory::Ring inner(inner_id, i_con.nodes) ;
+                        memory::Ring inner(inner_id, inner_proto.nodes) ;
                         area.add_inner(outer, inner);
-                        area.add_ways(i_con.ways);
+                        area.add_ways(inner_proto.ways);
                         ++inner_id;
                     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <boost/filesystem/operations.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -11,6 +13,14 @@ namespace fs = boost::filesystem;
 
 namespace util
 {
+
+    void validate_id(const std::string& name, long id)
+    {
+        if (id < 0)
+        {
+            throw std::invalid_argument("Invalid id specified for parameter '" + name + "'. Ids must be positive integers");
+        }
+    }
 
     /**
      * 
@@ -33,10 +43,47 @@ namespace util
         }
     }
 
+    /**
+     * 
+     */
+    void validate_dir(const std::string& name, fs::path& path)
+    {
+        // Verify that file was provided
+        if (path.string() == "")
+        {
+            throw std::invalid_argument("No directory specified for parameter '" + name + "'");
+        }
+        // Verify that the file exists by canonicalizing it
+        try
+        {
+            path = fs::canonical(path);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::invalid_argument("Specified directory '" + path.string() + "' for parameter '" + name + "' does not exist"); 
+        }
+        if (!fs::is_directory(path))
+        {
+            throw std::invalid_argument("The path specified for parameter '" + name + "' is not a directory");
+        }
+    }
+
     void validate_levels(
         model::level_type territory_level,
         const std::vector<model::level_type>& bonus_levels
     ) {
+        // Check if territory level was set to auto
+        if (territory_level == 0)
+        {
+            if (!bonus_levels.empty())
+            {
+                throw std::invalid_argument(
+                    "Territory level was set to 0 (auto), but bonus levels were specified."
+                    " Bonus levels can only be specified if the territory level was set"
+                );
+            }
+            return;
+        }
         // Validate territory level
         if (territory_level < 1 || territory_level > 12)
         {

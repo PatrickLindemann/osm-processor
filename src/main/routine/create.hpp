@@ -1,10 +1,11 @@
 #pragma once
 
+#include <algorithm>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <iostream>
-#include <exception>
-#include <algorithm>
+#include <regex>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -13,8 +14,9 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 
+#include "functions/transform.hpp"
 #include "io/reader.hpp"
-// #include "io/writer.hpp"
+#include "io/writer.hpp"
 #include "functions/project.hpp"
 #include "mapmaker/assembler.hpp"
 #include "mapmaker/builder.hpp"
@@ -22,7 +24,8 @@
 #include "mapmaker/connector.hpp"
 #include "mapmaker/filter.hpp"
 #include "mapmaker/inspector.hpp"
-#include "mapmaker/projector.hpp"
+#include "mapmaker/transformer.hpp"
+#include "mapmaker/calculator.hpp"
 #include "model/container.hpp"
 #include "model/geometry/rectangle.hpp"
 #include "util/validate.hpp"
@@ -38,18 +41,21 @@ namespace routine
         
         /* Main function */
 
-        void run(const std::vector<std::string>& args, char* argv[])
+        void run(int argc, char* argv[])
         {
-            // Define constants
+            // Extract file path from argv and remove the command from it
             const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
+            const fs::path ROOT_DIR = FILE_PATH.parent_path();
+            argc--;
+            argv++;
 
             // Define variables
             fs::path input;
-            fs::path output;
+            fs::path outdir;
             level_type territory_level;
             std::vector<level_type> bonus_levels;
-            size_t width;
-            size_t height;
+            int width;
+            int height;
             double compression_epsilon;
             double filter_epsilon;
             bool verbose;
@@ -63,18 +69,18 @@ namespace routine
             options.add_options()
                 ("input", po::value<fs::path>(&input),
                     "Sets the input file path.\nAllowed file formats: .osm, .pbf")
-                ("output,o", po::value<fs::path>(&output),
-                        "Sets the path prefix for the output files.")
+                ("outdir,o", po::value<fs::path>(&outdir),
+                        "Sets the output folder for the generated map files.")
                 ("territory-level,t", po::value<level_type>(&territory_level)->default_value(0),
                     "Sets the admin_level of boundaries that will be be used as territories."
                     "\nInteger between 1 and 12.")
                 ("bonus-levels,b", po::value<std::vector<level_type>>(&bonus_levels)->multitoken(),
                     "Sets the admin_level of boundaries that will be be used as bonus links."
                     "\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
-                ("width,w", po::value<size_t>(&width)->default_value(1000),
+                ("width,w", po::value<int>(&width)->default_value(-1),
                     "Sets the generated map width in pixels."
                     "\nIf set to 0, the width will be determined automatically.")
-                ("height,h", po::value<size_t>(&height)->default_value(0),
+                ("height,h", po::value<int>(&height)->default_value(0),
                     "Sets the generated map height in pixels."
                     "\nIf set to 0, the height will be determined automatically.")
                 ("compression-tolerance,c", po::value<double>(&compression_epsilon)->default_value(0.0),
@@ -88,37 +94,59 @@ namespace routine
 
             // Parse the specified arguments
             po::variables_map vm;
-            po::store(po::command_line_parser(args)
+            po::store(po::command_line_parser(argc, argv)
                 .options(options)
                 .positional(positional)
                 .run(), vm);
             po::notify(vm);
 
+            // Set outdir default
+            if (outdir.string() != "")
+            {   
+                util::validate_dir("outdir", outdir);
+            }
+            else
+            {
+                outdir = fs::path(ROOT_DIR / "../out");
+            }
+
+            // Set width default
+            if (width < 0)
+            {
+                width = 1000;
+            }
+
             // Validate the parsed variables. If a variable is invalid,
             // the exception will be passed to the executing instance.
-            util::validate_file("input", input);
+            util::validate_file("input", input);            
             util::validate_levels(territory_level, bonus_levels);
             util::validate_dimensions(width, height);
             util::validate_epsilon("compression-tolerance", compression_epsilon);
             util::validate_epsilon("filter-tolerance", filter_epsilon);
 
-            // Set the output file naming prefix
-            if (output.string() != "")
-            {
-                output = fs::path(output);
-            }
-            else
-            {
-                output = FILE_PATH.parent_path() / "../out" / (input.filename().replace_extension(""));
-            }
+            // Sort bonus levels
+            std::sort(bonus_levels.begin(), bonus_levels.end());
 
             // Read the file info and print it to the console
-            InfoContainer info = io::reader::get_info(input.string());
+            InfoContainer info = io::reader::read_info(input.string());
             info.print(std::cout);
+            
+            // If the territory level was set to auto, choose level with the most
+            // boundaries
+            if (territory_level == 0)
+            {
+                auto [l, c] = *std::max_element(info.level_counts.cbegin(), info.level_counts.cend(),
+                    [](const std::pair<short, size_t>& e1, const std::pair<short, size_t>& e2)
+                    {
+                    return e1.second < e2.second;
+                    }
+                );
+                territory_level = l;
+            }
 
             /* Read the file contents and extract the nodes, ways and relations */
-            std::cout << "Reading file data from file \"" << input << "\"..." << std::endl;
-            DataContainer data = io::reader::get_data(input.string(), territory_level, bonus_levels);
+            std::cout << "Reading file data from file " << input << "..." << std::endl;
+            DataContainer data = io::reader::read_data(input.string(), territory_level, bonus_levels);
             if (!data.incomplete_relations.empty()) {
                 std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
                 for (const auto id : data.incomplete_relations) {
@@ -159,7 +187,7 @@ namespace routine
             {
                 std::cout << "Fitering territories by their relative size..." << std::endl;
                 mapmaker::filter::AreaFilter territory_filter {
-                    data.areas, data.relations, components, data.nodes, data.ways
+                    data.areas, data.relations, neighbors, components, data.nodes, data.ways
                 };
                 size_t territories_before = data.areas.size();
                 territory_filter.filter_areas(filter_epsilon);
@@ -183,17 +211,18 @@ namespace routine
 
             // Apply the map projections
             std::cout << "Applying the map projections... " << std::endl;
-            mapmaker::projector::Projector<double> projector{ data.nodes };  
+            mapmaker::transformer::Transformer<double> transformer{ data.nodes };  
             // Convert the map coordinates to radians
-            projector.apply_projection(functions::RadianProjection<double>{});
+            transformer.apply(functions::RadianProjection<double>{});
             // Apply the MercatorProjection
-            projector.apply_projection(functions::MercatorProjection<double>{});
+            transformer.apply(functions::MercatorProjection<double>{});
+            // Apply the MirrorProjection
+            transformer.apply(functions::ScaleTranformation<double>{ 1.0, -1.0 });
             std::cout << "Applied projections sucessfully on " << data.nodes.size() << " nodes." << std::endl;
 
             // Scale the map
             std::cout << "Scaling the map... " << std::endl;
-            // TODO re-calculate bounds
-            geometry::Rectangle<double> bounds;
+            geometry::Rectangle<double> bounds = transformer.get_bounds(data.areas);
             // Check if a dimension is set to auto and calculate its value
             // depending on the map bounds
             if (width == 0 || height == 0)
@@ -209,48 +238,57 @@ namespace routine
             }
             // Apply the scaling projections
             // Scale the map according to the dimensions
-            projector.apply_projection(functions::UnitProjection<double>{
+            transformer.apply(functions::UnitProjection<double>{
                 { bounds.min().x(), bounds.max().x() },
                 { bounds.min().y(), bounds.max().y() }
             });
-            projector.apply_projection(functions::IntervalProjection<double>{
+            transformer.apply(functions::IntervalProjection<double>{
                 { 0.0, 1.0 }, { 0.0, 1.0 }, { 0.0, width }, { 0.0, height }
             });
+            bounds = { 0.0, 0.0, (double) width, (double) height };
             std::cout << "Scaled the map sucessfully. The output size will be " << width << "x" << height << "px" << std::endl;
 
-            /*
             // Assemble the geometries
             std::cout << "Converting areas to geometries... " << std::endl;
-            mapmaker::converter::GeometryConverter converter{ data.nodes, data.areas };
-            converter.run();
-            data.geometries = converter.geometries();
+            mapmaker::builder::MapBuilder map_builder{ data.nodes, data.areas, neighbors };
+            std::string name = std::regex_replace(
+                input.filename().string(),
+                std::regex("(\\.osm|\\.pbf)"),
+                ""
+            );
+            map::Map map = map_builder.build_map(name, width, height, territory_level, bonus_levels);
             std::cout << "Built geometries successfully. " << std::endl;
-
 
             // Calculate the centerpoints
             std::cout << "Calculating centerpoints... " << std::endl;
+            mapmaker::calculator::CenterCalculator center_calculator{ map.territories() };
+            center_calculator.calculate_centerpoints(bounds);
             std::cout << "Calculated centerpoints successfully. " << std::endl;
 
-            // Build the final map
-            std::cout << "Building the map... " << std::endl;
-            mapmaker::builder::MapBuilder builder{ data };
-            builder.run();
-            map::Map map = builder.map();
-            std::cout << "Built the map sucessfully." << std::endl;
+            // Calculate Hirarchy
+
+            // Calculate connections
+
+            // Calculate armies
+
+            // Calculate colors?
+
+            // Calculate bonus link placements?
 
             // Export the map data as .svg file
             std::cout << "Exporting map data..." << std::endl;
-            std::string outpath_string = output_path.string();
-            io::writer::write_metadata(outpath_string, map);
-            std::cout << "Exported metadata to " << output_path << ".json" << std::endl;
-            io::writer::write_map(outpath_string, map);
-            std::cout << "Exported map to " << output_path << ".svg" << std::endl;
-            io::writer::write_preview(outpath_string, map);
-            std::cout << "Exported metadata to " << output_path << ".preview.svg" << std::endl;
+            
+            fs::path outfile_svg = outdir / fs::path(name).replace_extension(".svg");
+            io::writer::write_map(outfile_svg.string(), map);
+            std::cout << "Exported map to " << outfile_svg << std::endl;
+            
+            fs::path outfile_json = outdir / fs::path(name).replace_extension(".json");
+            io::writer::write_metadata(outfile_json.string(), map);
+            std::cout << "Exported metadata to " << outfile_json << std::endl;
+
             std::cout << "Data export finished successfully. " << std::endl;
 
             std::cout << "Finished Mapmaker after " << 0 << " seconds." << std::endl;
-            */
         }
 
     }

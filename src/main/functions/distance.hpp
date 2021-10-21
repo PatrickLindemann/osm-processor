@@ -102,10 +102,10 @@ namespace functions
             const geometry::Point<T>& left = ring.at(i);
             const geometry::Point<T>& right = ring.at(j);
             // Check if point is inside or outside of the ring
-            if ((left.y > point.y) != (right.y > point.y))
+            if ((left.y() > point.y()) != (right.y() > point.y()))
             {
-                double f = (right.x - left.x) * (point.y - left.y) / (right.y - left.y) + left.x;
-                if (point.x < f)
+                double f = (right.x() - left.x()) * (point.y() - left.y()) / (right.y() - left.y()) + left.x();
+                if (point.x() < f)
                 {
                     inside = !inside;
                 }
@@ -136,10 +136,10 @@ namespace functions
         const geometry::Point<T>& point,
         const geometry::Polygon<T>& polygon
     ) {
-        double distance = distance_to_ring(point, polygon.outer);
+        double distance = distance_to_ring(point, polygon.outer());
         // Calculate the minimal (signed) distance of the point
         // to each inner ring of the polygon 
-        for (const auto& inner : polygon.inners)
+        for (const auto& inner : polygon.inners())
         {
             double d = distance_to_ring(point, inner);
             if (std::abs(d) < std::abs(distance))

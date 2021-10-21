@@ -59,24 +59,14 @@ namespace model
                 std::vector<value_type>::push_back(value);
             };
 
-            value_type& at(object_id_type id)
+            value_type& at(const EntityRef& entity)
             {
-                return this->at(id);
+                return std::vector<value_type>::at(entity.ref());
             }
 
-            const value_type& at(object_id_type id) const
+            const value_type& at(const EntityRef& entity) const
             {
-                return this->at(id);
-            }
-
-            value_type& at(EntityRef ref)
-            {
-                return this->at(ref.ref());
-            }
-
-            const value_type& at(EntityRef ref) const
-            {
-                return this->at(ref.ref());
+                return std::vector<value_type>::at(entity.ref());
             }
 
             /* Inherited methods */
@@ -98,6 +88,7 @@ namespace model
 
             using std::vector<ValueType>::front;
             using std::vector<ValueType>::back;
+            using std::vector<ValueType>::at;
 
             using std::vector<ValueType>::pop_back;
 

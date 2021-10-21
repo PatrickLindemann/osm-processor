@@ -31,10 +31,10 @@ namespace functions
         T max_y = -limits.max();
         for (const geometry::Point<T>& point : polygon.outer())
         {
-            min_x = std::min(min_x, point.x);
-            min_y = std::min(min_y, point.y);
-            max_x = std::max(max_x, point.x);
-            max_y = std::max(max_y, point.y);
+            min_x = std::min(min_x, point.x());
+            min_y = std::min(min_y, point.y());
+            max_x = std::max(max_x, point.x());
+            max_y = std::max(max_y, point.y());
         }
         return geometry::Rectangle<T>{ min_x, min_y, max_x, max_y };
     }
@@ -61,10 +61,10 @@ namespace functions
         {
             for (const geometry::Point<T>& point : polygon.outer())
             {
-                min_x = std::min(min_x, point.x);
-                min_y = std::min(min_y, point.y);
-                max_x = std::max(max_x, point.x);
-                max_y = std::max(max_y, point.y);
+                min_x = std::min(min_x, point.x());
+                min_y = std::min(min_y, point.y());
+                max_x = std::max(max_x, point.x());
+                max_y = std::max(max_y, point.y());
             }
         }
         return geometry::Rectangle<T>{ min_x, min_y, max_x, max_y };

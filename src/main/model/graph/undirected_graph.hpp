@@ -76,8 +76,6 @@ namespace model
              */
             void insert_edge(edge_type edge) override
             {
-                m_vertices.insert(edge.first);
-                m_vertices.insert(edge.second);
                 m_edges.insert(edge);
                 m_edges.insert(reverse(edge));
             };
@@ -93,6 +91,17 @@ namespace model
             bool contains_edge(const edge_type& edge) const override
             {
                 return m_edges.find(edge) != m_edges.end();
+            }
+
+            /**
+             * Removes an edge from the graph if it exists.
+             * 
+             * @param edge  The edge as <vertex, vertex> pair
+             */
+            void remove_edge(const edge_type& edge) override
+            {
+                m_edges.erase(edge);
+                m_edges.erase(reverse(edge));
             }
 
         protected:

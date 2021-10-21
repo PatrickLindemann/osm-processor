@@ -5,16 +5,22 @@
 
 #include "functions/area.hpp"
 #include "functions/center.hpp"
+#include "functions/envelope.hpp"
+#include "model/geometry/rectangle.hpp"
+#include "model/map/bonus.hpp"
 #include "model/map/territory.hpp"
+#include "model/memory/area.hpp"
+#include "model/memory/buffer.hpp"
+#include "model/memory/node.hpp"
+#include "model/memory/ring.hpp"
+
+using namespace model;
 
 namespace mapmaker
 {
 
     namespace calculator
     {
-        
-        using namespace model::map;
-        using namespace model::geometry;
 
         /**
          * A calculator for territory centerpoints.
@@ -24,17 +30,14 @@ namespace mapmaker
         
             /* Members */
 
-            /**
-             * The territory buffer reference
-             */
-            std::vector<Territory>& m_territories;
+            std::vector<map::Territory>& m_territories;
 
         public:
 
             /* Constructors */
 
             CenterCalculator(
-                std::vector<Territory>& territories
+                std::vector<map::Territory>& territories
             ) : m_territories(territories) {}
 
         protected:
@@ -63,7 +66,7 @@ namespace mapmaker
              */
             double get_precision(double area, double total, double k = 25)
             {
-                return area / ( 1 + std::exp(-k * area / total) * (PRECISION_MIN_REVERSE - 1));
+                return area / ( 1 + std::exp(-k * area / total) * (PRECISION_MIN_REVERSE - 1)) + 1;
             }
 
         public:
@@ -74,17 +77,17 @@ namespace mapmaker
              * Calculate the centerpoints for each territory with a relative
              * precision to the map bounds.
              * 
-             * @param bounds The bounding box of the map
+             * @param map_bounds The bounding box of the map
              * 
              * Time complexity: TODO
              */
-            void calculate_centerpoints(const Rectangle<double>& bounds)
+            void calculate_centerpoints(const geometry::Rectangle<double>& map_bounds)
             {
                 // Calculate the area of the map bounding box
-                double total_area = functions::area(bounds);
+                double total_area = functions::area(map_bounds);
 
                 // Calculate the center point for each territory
-                for (Territory& territory : m_territories)
+                for (map::Territory& territory : m_territories)
                 {
                     // Calculate the surface area of the current territory
                     double area = functions::area(territory.geometry());

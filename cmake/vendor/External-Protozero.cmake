@@ -9,7 +9,7 @@ ExternalProject_Add(
     PREFIX ${PROTOZERO_ROOT_DIR}
     GIT_REPOSITORY "${GIT_PROTOCOL}://github.com/mapbox/protozero.git"
     GIT_TAG master
-    GIT_PROGRESS true
+    GIT_PROGRESS ON
     TIMEOUT 10
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
