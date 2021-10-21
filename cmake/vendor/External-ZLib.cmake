@@ -22,7 +22,7 @@ ExternalProject_Add(
 # Set include and library paths
 set( ZLIB_INCLUDE_DIR ${ZLIB_INSTALL_DIR}/include )
 if ( WIN32 )
-    set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libzlib.dll.a )
+    set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libzlibstatic.a )
 else()
     set( ZLIB_LIBRARIES ${ZLIB_INSTALL_DIR}/lib/libz.a )
 endif()

@@ -19,6 +19,7 @@ if ( WIN32 )
         UPDATE_COMMAND ""
         CMAKE_ARGS
             -DCMAKE_INSTALL_PREFIX=${EXPAT_INSTALL_DIR}
+            -DEXPAT_SHARED_LIBS=OFF 
     )
 else()
     ExternalProject_Add(
@@ -44,8 +45,4 @@ endif()
 
 # Set include and library paths
 set( EXPAT_INCLUDE_DIR ${EXPAT_INSTALL_DIR}/include )
-if ( WIN32 )
-    set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.dll.a )
-else()
-    set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.a )
-endif()
+set( EXPAT_LIBRARIES ${EXPAT_INSTALL_DIR}/lib/libexpat.a )
