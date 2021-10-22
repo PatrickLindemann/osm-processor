@@ -51,7 +51,7 @@ namespace routine
             util::validate_file("input", input);
 
             // Read the file info and print it to the console
-            model::InfoContainer info = io::reader::read_info(input.string());
+            model::InfoContainer info = io::reader::read_fileinfo(input.string());
             info.print(std::cout);
 
         }

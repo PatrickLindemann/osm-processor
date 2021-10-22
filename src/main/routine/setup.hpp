@@ -1,7 +1,5 @@
 #pragma once
 
-#include "io/writer.hpp"
-#include "model/config.hpp"
 #include <iostream>
 #include <string>
 
@@ -11,6 +9,10 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
+
+#include "io/writer.hpp"
+#include "model/container.hpp"
+#include "util/validate.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -27,25 +29,24 @@ namespace routine
         {
             // Extract file path from argv and remove the command from it
             const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
-            const fs::path ROOT_DIR = FILE_PATH.parent_path();
+            const fs::path FILE_DIR = FILE_PATH.parent_path();
             argc--;
             argv++;
-    
-            // Define constants
-            const std::string API_TOKEN_WIKI = "https://www.warzone.com/wiki/Get_API_Token_API";
-            const std::string API_TOKEN_LINK = "https://www.warzone.com/API/GetAPIToken";
 
             // Define variables
             std::string email;
             std::string api_token;
+            fs::path outdir;
 
             // Define the general options
             po::options_description options("Allowed options");
             options.add_options()
                 ("email,e", po::value<std::string>(&email),
-                    "Sets the e-mail")
+                    "Sets the Warzone user e-mail")
                 ("api-token,t", po::value<std::string>(&api_token),
-                    "Sets the api-token")
+                    "Sets the Warzone API Token")
+                ("outdir,o", po::value<fs::path>(&outdir),
+                    "Sets the output directory of the configuration file (config.json)")
                 ("help,h", "Shows this help message.");
 
             // Parse the specified arguments
@@ -54,6 +55,16 @@ namespace routine
                 .options(options)
                 .run(), vm);
             po::notify(vm);
+
+            // Set outdir default
+            if (outdir.string() != "")
+            {   
+                util::validate_dir("outdir", outdir);
+            }
+            else
+            {
+                outdir = FILE_DIR;
+            }
 
             if (vm.count("help"))
             {
@@ -76,10 +87,10 @@ namespace routine
             }
 
             // Create the config object
-            model::Config config{ email, api_token };
+            model::ConfigContainer config{ email, api_token };
 
             // Write settings to config.json
-            fs::path config_path = fs::canonical(ROOT_DIR) / "config.json";
+            fs::path config_path = outdir / "config.json";
             std::cout << "Writing configuration to " << config_path << "." << std::endl;
             io::writer::write_config(config_path.string(), config);
         }

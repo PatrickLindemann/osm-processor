@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <fstream>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 
@@ -14,16 +16,22 @@
 #include <osmium/tags/matcher.hpp>
 #include <osmium/handler/node_locations_for_ways.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include "handler/count_handler.hpp"
 #include "handler/bounds_handler.hpp"
 #include "handler/convert_handler.hpp"
-#include "model/config.hpp"
 #include "model/container.hpp"
+#include "model/geometry/point.hpp"
+#include "model/map/bonus.hpp"
+#include "model/map/map.hpp"
+#include "model/map/territory.hpp"
 #include "model/memory/node.hpp"
 #include "model/memory/way.hpp"
 #include "model/memory/relation.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
+#include "model/type.hpp"
 
 using namespace model;
 
@@ -33,15 +41,94 @@ namespace io
     namespace reader
     {
 
-        Config read_config(const std::string& file_path)
+        /**
+         * 
+         */
+        ConfigContainer read_config(const std::string& file_path)
         {
-            return Config{ };
+            // Read the json from the specified file path
+            std::ifstream ifs { file_path };
+            nlohmann::json json = nlohmann::json::parse(ifs);           
+            // Parse json values as config and return the result
+            return ConfigContainer{
+                json.at("email"),
+                json.at("api-token")
+            };
         }
 
         /**
          * 
          */
-        InfoContainer read_info(const std::string& file_path)
+        map::Map read_metadata(const std::string& file_path)
+        {
+            // Read the json from the specified file path
+            std::ifstream ifs { file_path };
+            nlohmann::json json = nlohmann::json::parse(ifs);    
+            
+            // Create the result map container
+            map::Map map;
+
+            // Parse the primitive json values
+            map.name() = json.at("name");
+
+            // Parse the territory information
+            for (const auto& t : json.at("territories"))
+            {   
+                // Extract the territory meta information
+                map::Territory territory{ t.at("id") };
+                territory.name() = t.at("name");
+                territory.center() = { t.at("center").at("x"), t.at("center").at("y") };
+                for (const object_id_type& neighbor : t.at("neighbors"))
+                {
+                    territory.neighbors().push_back({ neighbor });
+                }
+                // Add territory to map container
+                map.territories().push_back(territory);
+            }
+
+            // Parse the territory information
+            for (const auto& b : json.at("bonuses"))
+            {   
+                // Extract the bonus meta information
+                if (b.at("is_super") == false)
+                {
+                    // Create regular bonus
+                    map::Bonus bonus{ b.at("id") };
+                    bonus.name() = b.at("name");
+                    bonus.color() = b.at("color");
+                    bonus.armies() = b.at("armies");
+                    for (const object_id_type& child : b.at("children"))
+                    {
+                        bonus.children().push_back({ child });
+                    }
+                    // Add bonus to map container
+                    map.bonuses().push_back(bonus);
+                }
+                else
+                {
+                    // Create super bonus
+                    map::SuperBonus bonus{ b.at("id") };
+                    bonus.name() = b.at("name");
+                    bonus.color() = b.at("color");
+                    bonus.armies() = b.at("armies");
+                    for (const object_id_type& child : b.at("children"))
+                    {
+                        bonus.children().push_back({ child });
+                    }             
+                    // Add super bonus to map container
+                    map.bonuses().push_back(bonus);       
+                }
+                
+            }
+            
+            // Return the resulting map container
+            return map;
+        }
+
+        /**
+         * 
+         */
+        InfoContainer read_fileinfo(const std::string& file_path)
         {
             // The Reader is initialized here with an osmium::io::File, but could
             // also be directly initialized with a file name.
@@ -91,7 +178,7 @@ namespace io
         /**
          * 
          */
-        DataContainer read_data(
+        DataContainer read_filedata(
             const std::string& file_path,
             level_type territory_level,
             std::vector<level_type> bonus_levels

@@ -25,8 +25,14 @@
 namespace model
 {
 
-    using namespace model::memory;
-    using namespace model::geometry;
+    /**
+     * A container for the program configuration
+     */
+    struct ConfigContainer
+    {
+        std::string email;
+        std::string api_token;
+    };
 
     /**
      * A container for file metadata and other
@@ -46,7 +52,7 @@ namespace model
         size_t relations;
         
         // Bounding Box information
-        Rectangle<double> bounds;
+        geometry::Rectangle<double> bounds;
 
         // Boundary information
         size_t boundary_count;
@@ -85,10 +91,10 @@ namespace model
     struct DataContainer
     {
         // OSM data buffers
-        Buffer<Node> nodes;
-        Buffer<Way> ways;
-        Buffer<Relation> relations;
-        Buffer<Area> areas;
+        memory::Buffer<memory::Node> nodes;
+        memory::Buffer<memory::Way> ways;
+        memory::Buffer<memory::Relation> relations;
+        memory::Buffer<memory::Area> areas;
 
         // Incomplete object buffers
         std::vector<osmium::object_id_type> incomplete_relations;

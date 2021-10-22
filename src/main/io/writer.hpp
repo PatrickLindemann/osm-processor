@@ -8,13 +8,16 @@
 #include <cassert>
 #include <type_traits>
 
+#include <nlohmann/json.hpp>
+
+#include "model/container.hpp"
 #include "model/geometry/multipolygon.hpp"
 #include "model/map/bonus.hpp"
 #include "model/map/map.hpp"
 #include "model/map/territory.hpp"
-#include "model/config.hpp"
 #include "util/time.hpp"
-#include "util/join.hpp"
+
+using json = nlohmann::ordered_json;
 
 using namespace model;
 
@@ -26,7 +29,7 @@ namespace io
         
         namespace detail
         {
-            
+
             template <typename StreamType, typename T>
             void write_geometry(StreamType& stream, const geometry::Polygon<T>& geometry)
             {
@@ -78,14 +81,17 @@ namespace io
         /**
          * 
          */
-        void write_config(std::string file_path, const Config& config)
+        void write_config(std::string file_path, const ConfigContainer& config)
         {
-            std::ofstream out{ file_path, std::ios::trunc };
-            out << '{'
-                << "\"email\":" << '"' << config.email << '"' << ','
-                << "\"api-token\":" << '"' << config.api_token << '"'
-                << '}'
-                << std::endl;
+            std::ofstream ofs{ file_path, std::ios::trunc };
+
+            // Prepare and fille the json data
+            json data;
+            data["email"] = config.email;
+            data["api-token"] = config.api_token;
+            
+            // Write the json to the output stream
+            ofs << data.dump() << std::endl;
         }
 
         /**
@@ -93,58 +99,62 @@ namespace io
          */
         void write_metadata(std::string file_path, const map::Map& map)
         {
-            std::ofstream out{ file_path, std::ios::trunc };
-            out.precision(4);
+            std::ofstream ofs{ file_path, std::ios::trunc };
+            ofs.precision(4);
 
-            // Write headers
-            out << "{"
-                << "\"name\":" << '\"' << map.name() << '\"' << ','
-                << "\"created\":" << '\"' << util::get_current_iso_timestamp() << '\"' << ','
-                << "\"levels\":" << '[' << util::join(map.levels()) << ']' << ',';
+            // Prepare the json data and add the json headers
+            json data;
+            data["name"] = map.name();
+            data["created_at"] = util::get_current_iso_timestamp();
+            data["levels"] = map.levels();
 
-            // Write boundary information
-            out << "\"boundaries\":" << '{';
-            // Write territories
-            out << "\"territories\":" << '[';
-            for (auto it = map.territories().cbegin(); it != map.territories().cend(); it++)
+            // Add the territories
+            auto territories = json::array();
+            for (const map::Territory& t : map.territories())
             {
-                if (it != map.territories().cbegin())
+                // Create territory json
+                auto territory = json::object();
+                territory["id"] = t.id();
+                territory["name"] = t.name();
+                auto center = json::object();
+                center["x"] = t.center().x();
+                center["y"] = t.center().y();
+                territory["center"] = center;
+                auto neighbors = json::array();
+                for (const map::TerritoryRef& neighbor : t.neighbors())
                 {
-                    out << ',';
+                    neighbors.push_back(neighbor.ref());
                 }
-                out << '{'
-                    << "\"id\":" << it->id() << ','
-                    << "\"name\":" << '\"' << it->name() << '\"' << ','
-                    << "\"center\":" << '['
-                        << it->center().x() << ','
-                        << it->center().y()
-                    << ']' << ','
-                    << "\"neighbors\":" << '[' << util::join(it->neighbors()) << ']'
-                    << '}';
+                territory["neighbors"] = neighbors;
+                // Add the json territory to the territories array
+                territories.push_back(territory);
             }
-            out << ']'; // End territories
-            // Write bonuses
-            out << ',';
-            out << "\"bonuses\":[";
-            for (auto it = map.bonuses().cbegin(); it != map.bonuses().cend(); it++)
-            {
-                if (it != map.bonuses().cbegin())
-                {
-                    out << ',';
-                }
-                out << '{'
-                    << "\"id\":" << it->id() << ','
-                    << "\"name\":" << '\"' << it->name() << '\"' << ','
-                    << "\"color\":" << '\"' << it->color() << '\"' << ','
-                    << "\"armies\":" << '\"' << it->armies() << '\"' << ','
-                    << "\"super_bonus\":" << '\"' << it->is_super() << '\"' << ','
-                    << "\"children\":" << '[' << util::join(it->children()) << ']'
-                    << '}';
-            }
-            out << ']'; // End bonues
-            out << '}'; // End boundaries
+            data["territories"] = territories;
 
-            out << "}" << std::endl; // End file
+            // Add the bonuses
+            auto bonuses = json::array();
+            for (const map::Bonus& b : map.bonuses())
+            {
+                // Create territory json
+                auto bonus = json::object();
+                bonus["id"] = b.id();
+                bonus["name"] = b.name();
+                bonus["color"] = b.color();
+                bonus["armies"] = b.armies();
+                bonus["is_super"] = b.is_super();
+                auto children = json::array();
+                for (const map::BoundaryRef& child : b.children())
+                {
+                    children.push_back(child.ref());
+                }
+                bonus["children"] = children;
+                // Add the json territory to the territories array
+                bonuses.push_back(bonus);
+            }
+            data["bonuses"] = bonuses;
+
+            // Write json document to file
+            ofs << data.dump() << std::endl;
         }
 
         /**
@@ -152,16 +162,16 @@ namespace io
          */
         void write_map(std::string file_path, const map::Map& map)
         {
-            std::ofstream out{ file_path, std::ios::trunc };
-            out.precision(4);
+            std::ofstream ofs{ file_path, std::ios::trunc };
+            ofs.precision(4);
 
-            if (!out.is_open())
+            if (!ofs.is_open())
             {
                 return; // TODO Error handling
             }
 
             // Write headers
-            out << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
+            ofs << "<svg xmlns=\"http://www.w3.org/2000/svg\" "
             << "id=\"my-svg\" "
             << "width=\"" << map.width() << "px\" "
             << "height=\"" << map.height() << "px\""
@@ -174,28 +184,28 @@ namespace io
             // TODO with hirarchy
             for (const map::Bonus& bonus : map.bonuses())
             {
-                out << "<path "
+                ofs << "<path "
                     << "style=\"fill: " << bonus.color() << "; stroke:black; stroke-width: 2px;\" "
                     << "d=\"";
-                detail::write_geometry(out, bonus.geometry());
-                out << "\"/>"; // End path
+                detail::write_geometry(ofs, bonus.geometry());
+                ofs << "\"/>"; // End path
             }
 
             // Write territories
             for (const map::Territory& territory : map.territories())
             {
-                out << "<path "
+                ofs << "<path "
                     << "id=\"Territory_" << territory.id() << "\" "
                     << "style=\"stroke:black; fill:none; stroke-width: 1px;\" "
                     << "d=\"";
-                detail::write_geometry(out, territory.geometry());
-                out << "\"/>"; // End path
+                detail::write_geometry(ofs, territory.geometry());
+                ofs << "\"/>"; // End path
             }
 
             // Write centers
             for (const map::Territory& territory : map.territories())
             {
-                out << "<circle "
+                ofs << "<circle "
                     << "id=\"Center_" << territory.id() << "\" "
                     << "cx=\"" << territory.center().x() << "\" "
                     << "cy=\"" << territory.center().y() << "\" "
@@ -207,7 +217,7 @@ namespace io
             // Write Bonus Links
             // TODO
 
-            out << "</svg>" << std::endl; // End file
+            ofs << "</svg>" << std::endl; // End file
         }
         
     }

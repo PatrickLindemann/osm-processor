@@ -1,15 +1,8 @@
 #pragma once
 
-#include "model/config.hpp"
 #include <algorithm>
-#include <exception>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include <iostream>
-#include <regex>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -17,10 +10,16 @@
 #include <boost/program_options/value_semantic.hpp>
 
 #include "io/reader.hpp"
+#include "model/container.hpp"
+#include "model/map/map.hpp"
+#include "util/request.hpp"
 #include "util/validate.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
+
+using namespace model;
+
 
 namespace routine
 {
@@ -34,7 +33,7 @@ namespace routine
         {
             // Extract file path from argv and remove the command from it
             const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
-            const fs::path ROOT_DIR = FILE_PATH.parent_path();
+            const fs::path FILE_DIR = FILE_PATH.parent_path();
             argc--;
             argv++;
 
@@ -45,8 +44,8 @@ namespace routine
             
             // Define the positional options
             po::positional_options_description positional;
-            positional.add("input", -1);
-            positional.add("map-id", -1);
+            positional.add("input", 1);
+            positional.add("map-id", 1);
 
             // Define the general options
             po::options_description options("Allowed options");
@@ -55,7 +54,7 @@ namespace routine
                     "Sets the input file path.\nAllowed file formats: .json")
                 ("map-id", po::value<long>(&map_id),
                         "Sets the map id that the metadata changes will be made to.")
-                ("config,c", po::value<fs::path>(&config_path)->default_value(ROOT_DIR / "config.json"),
+                ("config,c", po::value<fs::path>(&config_path)->default_value(FILE_DIR / "config.json"),
                     "Sets the path to the configuration file (config.json).")
                 ("help,h", "Shows this help message.");
 
@@ -75,27 +74,20 @@ namespace routine
             util::validate_file("config", config_path);  
 
             // Read the config file
-            model::Config config = io::reader::read_config(config_path.string());
+            ConfigContainer config = io::reader::read_config(config_path.string());
             
             // Read the input metadata file
+            map::Map map = io::reader::read_metadata(input_path.string()); 
 
-            // Create the API request
-            std::stringstream stream;
+            std::cout << "Preparing the request payload..." << std::endl;
+            std::string payload = util::get_payload(map_id, config, map);
+            std::cout << "Prepared request data successfully." << std::endl;
 
-            // email: ""
-            // APIToken: ""
-            // mapID: ""
-            // commands: []
-            
-            // Territory commands:
-            // { command: "setTerritoryName", id: territory.id(), name: "territory.name()" }
-            // { command: "setTerritoryCenterPoint", id: territory.id(), x: "territory.center().x()", y: "territory.center().y()" }
-            // { command: "addTerritoryConnection", id1: territory.id(), id2: neighbor.id(), warp: "Normal" }
-            
-            // Bonus commands:
-            // { command: "addBonus", name: "bonus.name()", armies: bonus.armies(), color: "bonus.color()" }
-            // { command: "addTerritoryToBonus", id: child.id(), bonusName: "bonus.name()" }
-
+            // Send the request
+            std::cout << "Sending request for map " << map_id << " to " << "https://www.warzone.com/API/SetMapDetails" << std::endl;
+            util::ResponseContainer response = util::post_metadata(payload);
+            std::cout << "Received response: " << response.code << " " << response.reason << '\n'
+                      << response.body << std::endl;
         }
 
     }

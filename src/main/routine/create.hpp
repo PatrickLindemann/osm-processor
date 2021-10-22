@@ -29,6 +29,7 @@
 #include "model/container.hpp"
 #include "model/geometry/rectangle.hpp"
 #include "util/validate.hpp"
+#include "util/title.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -45,7 +46,7 @@ namespace routine
         {
             // Extract file path from argv and remove the command from it
             const fs::path FILE_PATH = fs::system_complete(fs::path(argv[0]));
-            const fs::path ROOT_DIR = FILE_PATH.parent_path();
+            const fs::path FILE_DIR = FILE_PATH.parent_path();
             argc--;
             argv++;
 
@@ -107,7 +108,8 @@ namespace routine
             }
             else
             {
-                outdir = fs::path(ROOT_DIR / "../out");
+                fs::create_directory(FILE_DIR / "out");
+                outdir = fs::canonical(FILE_DIR / "/out");
             }
 
             // Set width default
@@ -124,11 +126,13 @@ namespace routine
             util::validate_epsilon("compression-tolerance", compression_epsilon);
             util::validate_epsilon("filter-tolerance", filter_epsilon);
 
+            util::print_title(std::cout);
+
             // Sort bonus levels
             std::sort(bonus_levels.begin(), bonus_levels.end());
 
             // Read the file info and print it to the console
-            InfoContainer info = io::reader::read_info(input.string());
+            InfoContainer info = io::reader::read_fileinfo(input.string());
             info.print(std::cout);
             
             // If the territory level was set to auto, choose level with the most
@@ -146,7 +150,7 @@ namespace routine
 
             /* Read the file contents and extract the nodes, ways and relations */
             std::cout << "Reading file data from file " << input << "..." << std::endl;
-            DataContainer data = io::reader::read_data(input.string(), territory_level, bonus_levels);
+            DataContainer data = io::reader::read_filedata(input.string(), territory_level, bonus_levels);
             if (!data.incomplete_relations.empty()) {
                 std::cerr << "Warning! Some member ways missing for these multipolygon relations:";
                 for (const auto id : data.incomplete_relations) {
@@ -260,11 +264,13 @@ namespace routine
             std::cout << "Built geometries successfully. " << std::endl;
 
             // Calculate the centerpoints
+            /*
             std::cout << "Calculating centerpoints... " << std::endl;
             mapmaker::calculator::CenterCalculator center_calculator{ map.territories() };
             center_calculator.calculate_centerpoints(bounds);
             std::cout << "Calculated centerpoints successfully. " << std::endl;
-
+            */
+           
             // Calculate Hirarchy
 
             // Calculate connections
