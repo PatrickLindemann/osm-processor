@@ -118,20 +118,20 @@ include( ${VENDOR_CMAKE_DIR}/External-BZip2.cmake )
 # https://zlib.net/
 # This is needed to work with protocol buffer format (.pbf) and other compressed
 # input and output files.
-include ( ${VENDOR_CMAKE_DIR}/External-ZLib.cmake )
+include( ${VENDOR_CMAKE_DIR}/External-ZLib.cmake )
 
 # PROTOZERO is a minimalistic protocol buffer decoder and encoder in C++.
 # https://github.com/mapbox/protozero
-include ( ${VENDOR_CMAKE_DIR}/External-Protozero.cmake )
+include( ${VENDOR_CMAKE_DIR}/External-Protozero.cmake )
 
 # EXPAT is a a stream-oriented XML parser library written in C.
 # https://libexpat.github.io/
 # This is needed to work with common OSM XML file formats such as .osm files.
-include ( ${VENDOR_CMAKE_DIR}/External-Expat.cmake )
+include( ${VENDOR_CMAKE_DIR}/External-Expat.cmake )
 
-# RAPIDJSON is a fast JSON parser/generator for C++ with both SAX/DOM style API.
-# https://rapidjson.org/
-include( ${VENDOR_CMAKE_DIR}/External-Rapidjson.cmake )
+# NLOHMANN-JSON is a modern JSON parser for C++
+# https://github.com/nlohmann/json
+include( ${VENDOR_CMAKE_DIR}/External-NLohmann-Json.cmake )
 
 # OSMIUM is a fast and flexible C++ library for working with OpenStreetMap data.
 # https://osmcode.org/libosmium/
@@ -143,7 +143,7 @@ add_dependencies( ${PROJECT_NAME}
     zlib
     protozero
     expat
-    rapidjson
+    nlohmann-json
     libosmium
 )
 
@@ -153,16 +153,16 @@ target_include_directories( ${PROJECT_NAME} PUBLIC
     ${ZLIB_INCLUDE_DIR}
     ${PROTOZERO_INCLUDE_DIR}
     ${EXPAT_INCLUDE_DIR}
-    ${RAPIDJSON_INCLUDE_DIR}
+    ${NLOHMANN_JSON_INCLUDE_DIR}
     ${OSMIUM_INCLUDE_DIR}
 )
 
 # Link the built libraries
-# target_link_libraries( ${PROJECT_NAME} PUBLIC -static-${ZLIB_LIBRARIES})
 target_link_libraries( ${PROJECT_NAME} PUBLIC
     ${BZIP2_LIBRARIES}
     ${ZLIB_LIBRARIES}
     ${EXPAT_LIBRARIES}
+    ${CPR_LIBRARIES}
 )
 
 ###############################################################################

@@ -17,6 +17,7 @@ ExternalProject_Add(
     UPDATE_COMMAND ""
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${ZLIB_INSTALL_DIR}
+        -DBUILD_TESTING=OFF
 )
 
 # Set include and library paths

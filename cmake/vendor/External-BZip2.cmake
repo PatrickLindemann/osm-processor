@@ -17,8 +17,9 @@ ExternalProject_Add(
     UPDATE_COMMAND ""
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${BZIP2_INSTALL_DIR}
+        -DBUILD_TESTING=OFF
 )
 
 # Set include and library paths
 set( BZIP2_INCLUDE_DIR ${BZIP2_INSTALL_DIR}/include )
-set ( BZIP2_LIBRARIES ${BZIP2_INSTALL_DIR}/lib/libbz2.a )
+set( BZIP2_LIBRARIES ${BZIP2_INSTALL_DIR}/lib/libbz2.a )
