@@ -38,7 +38,7 @@ namespace util
     /**
      * https://www.warzone.com/wiki/Set_map_details_API
      */
-    std::string get_payload(long map_id, const ConfigContainer& config, const map::Map& map)
+    std::string create_payload(long map_id, const ConfigContainer& config, const map::Map& map)
     {
         json data;
 
@@ -83,16 +83,10 @@ namespace util
         // Add the bonus commands
         for (const map::Bonus& bonus : map.bonuses())
         {
-            if (bonus.is_super())
-            {
-                // TODO: Super bonuses are currently not supported
-                continue;
-            }
-
             // Add the addBonus command
             auto add_bonus_command = json::object();
             add_bonus_command["command"] = "addBonus";
-            add_bonus_command["name"] = bonus.id();
+            add_bonus_command["name"] = bonus.name();
             add_bonus_command["armies"] = bonus.armies();
             add_bonus_command["color"] = bonus.color();
             commands.push_back(add_bonus_command);
@@ -103,11 +97,17 @@ namespace util
                 auto add_territory_command = json::object();
                 add_territory_command["command"] = "addTerritoryToBonus";
                 add_territory_command["id"] = child.ref();
-                add_territory_command["name"] = bonus.name();
+                add_territory_command["bonusName"] = bonus.name();
                 commands.push_back(add_territory_command);
             }
         }
         
+        // Ignore super bonuses for now
+        for (const map::SuperBonus& super_bonus : map.super_bonuses())
+        {
+            // Skip
+        }
+
         // Add the commands to the json object
         data["commands"] = commands;
 
@@ -153,7 +153,7 @@ namespace util
         request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         request.set(http::field::content_type, "application/json; utf-8");
         request.set(http::field::accept, "*/*");
-        
+
         // Add the request body
         request.body() = payload;
         request.prepare_payload();

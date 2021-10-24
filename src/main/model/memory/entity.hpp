@@ -26,7 +26,7 @@ namespace model
 
             /* Constructors */
 
-            Entity(object_id_type id) : m_id(id) {};
+            Entity(object_id_type id) : m_id(id) {}
 
         public:
 
@@ -66,7 +66,7 @@ namespace model
 
             /* Constructors */
 
-            EntityRef(object_id_type ref) : m_ref(ref) {};
+            EntityRef(object_id_type ref) : m_ref(ref) {}
 
             /* Methods */
 

@@ -264,17 +264,18 @@ namespace mapmaker
                     if (!processed.at(way.ref()))
                     {
                         // Start a new ring and create it with backtracking
-                        ProtoRing ring;
+                        ProtoRing ring{};
                         ring.add_way_nodes(m_way_buffer.at(way));
                         processed.at(way.ref()) = true;
                         // Create the ring
-                        complete_ring(ring, ways, processed);
+                        bool completed = complete_ring(ring, ways, processed);
                         // Push the created ring to the result collection if
                         // it is valid
-                        if (ring.nodes.size() > 2)
+                        if (completed && ring.nodes.size() > 2)
                         {
                             rings.push_back(ring);
                         }
+                        // TODO log ignore
                     }
                 }
                 return std::move(rings);
@@ -290,49 +291,40 @@ namespace mapmaker
             ) {
                 std::vector<ProtoGroup> groups;
 
-                if (inner_rings.size() == 0)
+                // Create a new group for each outer ring
+                for (const ProtoRing& outer : outer_rings)
                 {
-                    // Simple case: N outers, 0 inners
-                    // No grouping needs to be performed
-                    for (const ProtoRing& outer : outer_rings)
-                    {
-                        groups.push_back({ outer });
-                    }
+                    groups.push_back({ outer });
                 }
-                else
-                {
-                    // Complex case: N outers, N inners
-                    // Perform ring grouping algorithm
 
-                    // ProtoGroup the inner rings to the outer ring by ring-in-ring
-                    // checks
-                    for (const ProtoRing& inner : inner_rings)
+                // ProtoGroup the inner rings to the outer ring by ring-in-ring
+                // checks
+                for (const ProtoRing& inner : inner_rings)
+                {
+                    // Try to find the outer ring that the inner ring is
+                    // fully contained in
+                    for (size_t i = 0; i < outer_rings.size(); i++)
                     {
-                        // Try to find the outer ring that the inner ring is
-                        // fully contained in
-                        for (size_t i = 0; i < outer_rings.size(); i++)
-                        {
-                            // Retrieve the outer ring
-                            const ProtoRing& outer = outer_rings.at(i);
-                            // Compare the bounding boxes first
-                            if (functions::rectangle_in_rectangle(
-                                inner.envelope,
-                                outer.envelope
-                            )) {
-                                // Check if the inner ring is actually contained
-                                // in the outer ring
-                                if (functions::ring_in_ring(inner.geometry, outer.geometry))
-                                {
-                                    groups.at(i).inners.push_back(inner);
-                                    continue;
-                                }
+                        // Retrieve the outer ring
+                        const ProtoRing& outer = outer_rings.at(i);
+                        // Compare the bounding boxes first
+                        if (functions::rectangle_in_rectangle(
+                            inner.envelope,
+                            outer.envelope
+                        )) {
+                            // Check if the inner ring is actually contained
+                            // in the outer ring
+                            if (functions::ring_in_ring(inner.geometry, outer.geometry))
+                            {
+                                groups.at(i).inners.push_back(inner);
+                                continue;
                             }
-                            // Inner ring was not assigned to an outer ring.
-                            // This happens if
-                            //  1) the inner ring is invalid (intersects with any outer ring) or
-                            //  2) the inner ring is actually an outer ring.
-                            // For either case, we ignore this ring.
                         }
+                        // Inner ring was not assigned to an outer ring.
+                        // This happens if
+                        //  1) the inner ring is invalid (intersects with any outer ring) or
+                        //  2) the inner ring is actually an outer ring.
+                        // For either case, we ignore this ring.
                     }
                 }
 
@@ -377,6 +369,10 @@ namespace mapmaker
 
                     // Retrieve other relevant relation tags
                     std::string name = relation.get_tag("name");
+                    if (name == "Kammeltal")
+                    {
+                        int a = 1;
+                    }
 
                     // Retrieve inner and outer ways
                     memory::EntityRefList<memory::WayRef> outer_ways;
@@ -456,7 +452,7 @@ namespace mapmaker
                     // Convert and add inner rings
                     for (size_t j = 0; j < group.inners.size(); j++)
                     {
-                        const ProtoRing& inner_proto = group.inners.at(i);
+                        const ProtoRing& inner_proto = group.inners.at(j);
                         memory::Ring inner(j, inner_proto.nodes) ;
                         area.add_inner(outer, inner);
                         area.add_ways(inner_proto.ways);

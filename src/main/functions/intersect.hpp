@@ -1,10 +1,12 @@
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 #include <queue>
 #include <set>
 
 #include "functions/util.hpp"
+#include "model/geometry/line.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/ring.hpp"
 #include "model/geometry/segment.hpp"
@@ -18,6 +20,35 @@ namespace functions
 
     namespace detail
     {
+        
+        template<typename T>
+        bool compare_xy(const geometry::Point<T>& p1, const geometry::Point<T>& p2)
+        {
+            if (p1.x() == p2.x())
+            {
+                return p1.y() < p2.y();
+            }
+            return p1.x() < p2.x();
+        }
+
+        template <typename T>
+        std::vector<geometry::Point<T>> difference(
+            std::vector<geometry::Point<T>> points1,
+            std::vector<geometry::Point<T>> points2
+        ) {
+            std::vector<geometry::Point<T>> diff;
+            std::sort(points1.begin(), points1.end(), compare_xy<T>);
+            std::sort(points2.begin(), points2.end(), compare_xy<T>);
+            std::set_difference(
+                points1.begin(),
+                points1.end(),
+                points2.begin(),
+                points2.end(),
+                std::back_inserter(diff),
+                compare_xy<T>
+            );
+            return diff;
+        }
 
         template <typename T>
         struct Event
@@ -203,7 +234,7 @@ namespace functions
     /**
      * Check if two segments intersect.
      * For more details on the formula, refer to
-     * https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/.
+     * https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
      * 
      * @param segment1 The first segment.
      * @param segment2 The second segment.
@@ -225,36 +256,40 @@ namespace functions
         const geometry::Point<T>& p1 = segment1.last();
         const geometry::Point<T>& q0 = segment2.first();
         const geometry::Point<T>& q1 = segment2.last();
-        // Calculate the dot product of the segments
-        const geometry::Point<T> pd = p1 - p0;
-        const T d = functions::dot(pd, q1 - q0);
-        // Check if segments are collinear
-        if (d != 0)
+
+        // Calculate the determinant of the two segments
+        geometry::Point<T> p10 = p1 - p0;
+        geometry::Point<T> q10 = q1 - q0;
+        double d = dot(p10, q10);
+
+        // Check if the segments are collinear (lie on the same line)
+        if (d == 0)
         {
-            // Segments are not collinear, check if
-            // they touch at an end point
-            if (p0 == q0 || p0 == q1 || p1 == q0 || p1 == q1)
+            // Segments are collinear, check if one of the endpoints lies
+            // between the endpoint of the segment
+            if (dot(p10, q0 - p0) == 0)
             {
-                return false;
+                return point_in_segment(p0, segment2)
+                    || point_in_segment(p1, segment2)
+                    || point_in_segment(q0, segment1)
+                    || point_in_segment(q1, segment1);
             }
-            // Check for point intersection
-            const T na = (q1.x() - q0.x()) * (p0.y() - q0.y())
-                             - (q1.y() - q0.y()) * (p0.x() - q0.x());
-            const T nb = (p1.x() - p0.x()) * (p0.y() - q0.y())
-                             - (p1.y() - p0.y()) * (p0.x() - q0.x());
-            return (d > 0 && na >= 0 && na <= d && nb >= 0 && nb <= d)
-                || (d < 0 && na <= 0 && na >= d && nb <= 0 && nb >= d);
+            return false;
         }
-        // Segments are collinear, check if they lie on
-        // the same line
-        if (dot(pd, q0 - p0) == 0)
+
+        // Check if the segments touch at an endpoint
+        if (p0 == q0 || p0 == q1 || p1 == q0 || p1 == q1)
         {
-            return point_in_segment(p0, segment2)
-                || point_in_segment(p1, segment2)
-                || point_in_segment(q0, segment1)
-                || point_in_segment(q1, segment1);
+            return false;
         }
-        return false;
+
+        // Check for a point intersection
+        double s = (-p10.y() * (p0.x() - q0.x()) + p10.x() * (p0.y() - q0.y()))
+                  / (-q10.x() * p10.y() + p10.x() * q10.y());
+        double t =  (q10.x() * (p0.y() - q0.y()) - q10.y() * (p0.x() - q0.x()))
+                  / (-q10.x() * p10.y() + p10.x() * q10.y());
+
+        return (s >= 0 && s <= 1 && t >= 0 && t <= 1);
     }
 
     /*
@@ -293,29 +328,34 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    inline bool point_in_ring(
+    inline int point_in_ring(
         const geometry::Point<T>& point,
         const geometry::Ring<T>& ring
     ) {
-        bool c;
-        for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+        int intersections;
+        for (size_t i = 0; i < ring.size() - 1; i++)
         {   
             const geometry::Point<T>& first = ring.at(i);
-            const geometry::Point<T>& last = ring.at(j);
+            const geometry::Point<T>& last = ring.at(i + 1);
             // Check if point is in y-range of the ring segment (i, j)
             if (first.y() > point.y() != last.y() > point.y())
             {
                 // Check for intersections
                 if (point.x() < (last.x() - first.x()) * (point.y() - first.y()) / (last.y() - first.y()) + first.x())
                 {
-                    c = !c;
+                    intersections++;
                 }
             }
         }
+        // Check if the point lies on the ring. If that is the case, return 0.
+        if (intersections == 0)
+        {
+            return 0;
+        }
         // If the number of intersections is odd, the return will be
-        // false (not inside), if it is even, the result will be
-        // true (inside)
-        return c;
+        // -1 (not inside), if it is even, the result will be
+        // 1 (inside)
+        return (intersections % 2 == 0 ? 1 : -1);
     }
 
     /**
@@ -349,13 +389,13 @@ namespace functions
     ) {
         // Convert ring to segment list
         std::vector<geometry::Segment<T>> segments;
-        for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+        for (size_t i = 0; i < ring.size() - 1; i++)
         {
-            segments.push_back({ ring.at(j), ring.at(i) });
+            segments.push_back({ ring.at(i), ring.at(i + 1) });
         }
         // Check any of the segment pairs intersect and return
         // the result
-        return !segments_intersect(segments);
+        return segments_intersect(segments);
     }
 
     /**
@@ -379,20 +419,31 @@ namespace functions
         {
             return false;
         }
-        // Check if a random point of the inner ring is
-        // inside of the outer ring
-        if (point_in_ring(inner.at(0), outer))
+        // Find points in the inner ring that are not part
+        // of the outer ring
+        std::vector<geometry::Point<T>> diff = detail::difference(inner, outer);
+        if (diff.size() == 0)
         {
-            return false;
+            // The rings are the same
+            return true;
+        }
+        // Try to find a point from the inner ring that is
+        // does not on lie on the outer ring segment and assert
+        // that it is inside
+        for (const geometry::Point<T>& p : diff)
+        {
+            int c = point_in_ring(p, outer);
+            if (c < 0) return false; // Point is outside
+            else if (c > 0) break; // Point is inside
         }
         // Check if there are any intersections between any
         // of the inner and outer segments
-        for (size_t i1 = 0, j1 = inner.size() - 1; i1 < inner.size() - 1; j1 = i1++)
+        for (size_t i = 0; i < inner.size() - 1; i++)
         {
-            const geometry::Segment<T> s1{ inner.at(j1), inner.at(i1) };
-            for (size_t i2 = 0, j2 = outer.size() - 1; i2 < outer.size(); j2 = i2++)
+            const geometry::Segment<T> s1{ inner.at(i), inner.at(i + 1) };
+            for (size_t j = 0; j < outer.size() - 1; j++)
             {
-                const geometry::Segment<T> s2{ outer.at(j2), inner.at(i2) };
+                const geometry::Segment<T> s2{ outer.at(j), outer.at(j + 1) };
                 if (segments_intersect(s1, s2))
                 {
                     return false;

@@ -14,7 +14,6 @@
 #include <boost/program_options.hpp>
 #include <boost/program_options/value_semantic.hpp>
 
-#include "functions/transform.hpp"
 #include "io/reader.hpp"
 #include "io/writer.hpp"
 #include "functions/project.hpp"
@@ -190,9 +189,14 @@ namespace routine
             if (filter_epsilon > 0)
             {
                 std::cout << "Fitering territories by their relative size..." << std::endl;
-                mapmaker::filter::AreaFilter territory_filter {
-                    data.areas, data.relations, neighbors, components, data.nodes, data.ways
-                };
+                mapmaker::filter::AreaFilter territory_filter(
+                    data.areas,
+                    data.relations,
+                    neighbors,
+                    components,
+                    data.nodes,
+                    data.ways
+                );
                 size_t territories_before = data.areas.size();
                 territory_filter.filter_areas(filter_epsilon);
                 size_t territories_after = data.areas.size();
@@ -271,15 +275,34 @@ namespace routine
             std::cout << "Calculated centerpoints successfully. " << std::endl;
             */
            
-            // Calculate Hirarchy
-
             // Calculate connections
 
-            // Calculate armies
+            if (!bonus_levels.empty())
+            {
+                // Create the bonus hirarchy
+                std::cout << "Calculating Hirarchy..." << std::endl;
+                mapmaker::connector::HirarchyCreator hirarchy_creator{
+                    map.territories(),
+                    map.bonuses(),
+                    map.super_bonuses()
+                };
+                hirarchy_creator.create_hirarchy();
+                std::cout << "Calculated hirarchy successfully. " << std::endl;
 
-            // Calculate colors?
+                // Calculate armies
+                std::cout << "Calculating army distribution..." << std::endl;
+                mapmaker::calculator::ArmyCalculator army_calculator{
+                    map.territories(),
+                    map.bonuses(),
+                    map.super_bonuses(),
+                    neighbors
+                };
+                army_calculator.calculate_armies(1, 10);
+                std::cout << "Calculated armies sucessfully" << std::endl;
+            }
 
-            // Calculate bonus link placements?
+
+            // Calculate connections
 
             // Export the map data as .svg file
             std::cout << "Exporting map data..." << std::endl;

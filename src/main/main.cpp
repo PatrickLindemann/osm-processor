@@ -45,6 +45,8 @@
 #include "routine/upload.hpp"
 #include "util/join.hpp"
 
+#define DEBUG 1
+
 namespace po = boost::program_options;
 
 const std::string NAME = "warzone-osm-mapmaker";
@@ -72,8 +74,10 @@ int main(int argc, char* argv[])
 
     std::string command;
     
+    /*
     try
     {
+    */
 
         if (argc > 1)
         {
@@ -125,12 +129,14 @@ int main(int argc, char* argv[])
             // routine::interactive::run(argc, argv);
         }
 
+    /*
     }
     catch (const std::exception& ex)
     {
         std::cout << "[Error] " << ex.what() << std::endl; 
         return 1;
     }
+    */
 
     return 0;
 }

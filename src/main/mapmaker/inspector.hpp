@@ -1,18 +1,23 @@
 #pragma once
 
 #include <cassert>
+#include <iomanip>
 #include <stack>
 #include <unordered_map>
 #include <vector>
 
+#include "functions/intersect.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/geometry/ring.hpp"
 #include "model/graph/edge.hpp"
 #include "model/graph/undirected_graph.hpp"
 #include "model/graph/vertex.hpp"
 #include "model/memory/area.hpp"
 #include "model/memory/buffer.hpp"
 #include "model/memory/entity.hpp"
+#include "model/memory/ring.hpp"
 #include "model/memory/way.hpp"
+#include "model/type.hpp"
 
 using namespace model;
 
@@ -35,6 +40,9 @@ namespace mapmaker
 
             /* Members */
 
+            /**
+             * 
+             */
             const memory::Buffer<memory::Area>& m_area_buffer;
 
         public:

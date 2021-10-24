@@ -29,7 +29,10 @@ namespace io
         
         namespace detail
         {
-
+            
+            /**
+             * 
+             */
             template <typename StreamType, typename T>
             void write_geometry(StreamType& stream, const geometry::Polygon<T>& geometry)
             {
@@ -63,6 +66,9 @@ namespace io
                 }
             }
 
+            /**
+             * 
+             */
             template <typename StreamType, typename T>
             void write_geometry(StreamType& stream, const geometry::MultiPolygon<T>& geometry)
             {
@@ -135,23 +141,43 @@ namespace io
             auto bonuses = json::array();
             for (const map::Bonus& b : map.bonuses())
             {
-                // Create territory json
+                // Create bonus json
                 auto bonus = json::object();
                 bonus["id"] = b.id();
                 bonus["name"] = b.name();
                 bonus["color"] = b.color();
                 bonus["armies"] = b.armies();
-                bonus["is_super"] = b.is_super();
                 auto children = json::array();
                 for (const map::BoundaryRef& child : b.children())
                 {
                     children.push_back(child.ref());
                 }
                 bonus["children"] = children;
-                // Add the json territory to the territories array
+                // Add the json bonus to the bonuses array
                 bonuses.push_back(bonus);
             }
             data["bonuses"] = bonuses;
+
+            // Add the super bonuses
+            auto super_bonuses = json::array();
+            for (const map::SuperBonus& s : map.super_bonuses())
+            {
+                // Create bonus json
+                auto super_bonus = json::object();
+                super_bonus["id"] = s.id();
+                super_bonus["name"] = s.name();
+                super_bonus["color"] = s.color();
+                super_bonus["armies"] = s.armies();
+                auto children = json::array();
+                for (const map::BoundaryRef& child : s.children())
+                {
+                    children.push_back(child.ref());
+                }
+                super_bonus["children"] = children;
+                // Add the json super bonus to the super bonuses array
+                super_bonuses.push_back(super_bonus);
+            }
+            data["super_bonuses"] = super_bonuses;
 
             // Write json document to file
             ofs << data.dump() << std::endl;
@@ -181,10 +207,19 @@ namespace io
             // TODO
 
             // Write bonuses in their order first
-            // TODO with hirarchy
+            for (const map::SuperBonus& super_bonus : map.super_bonuses())
+            {
+                ofs << "<path "
+                    << "name=\"" << super_bonus.name() << "\" "
+                    << "style=\"fill: " << super_bonus.color() << "; stroke:black; stroke-width: 3px;\" "
+                    << "d=\"";
+                detail::write_geometry(ofs, super_bonus.geometry());
+                ofs << "\"/>"; // End path
+            }
             for (const map::Bonus& bonus : map.bonuses())
             {
                 ofs << "<path "
+                    << "name=\"" << bonus.name() << "\" "
                     << "style=\"fill: " << bonus.color() << "; stroke:black; stroke-width: 2px;\" "
                     << "d=\"";
                 detail::write_geometry(ofs, bonus.geometry());
@@ -196,6 +231,7 @@ namespace io
             {
                 ofs << "<path "
                     << "id=\"Territory_" << territory.id() << "\" "
+                    << "name=\"" << territory.name() << "\" "
                     << "style=\"stroke:black; fill:none; stroke-width: 1px;\" "
                     << "d=\"";
                 detail::write_geometry(ofs, territory.geometry());

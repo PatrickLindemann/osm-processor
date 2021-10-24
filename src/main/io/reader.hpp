@@ -86,39 +86,36 @@ namespace io
                 map.territories().push_back(territory);
             }
 
-            // Parse the territory information
+            // Parse the regular bonus information
             for (const auto& b : json.at("bonuses"))
             {   
-                // Extract the bonus meta information
-                if (b.at("is_super") == false)
+                // Create regular bonus
+                map::Bonus bonus{ b.at("id") };
+                bonus.name() = b.at("name");
+                bonus.color() = b.at("color");
+                bonus.armies() = b.at("armies");
+                for (const object_id_type& child : b.at("children"))
                 {
-                    // Create regular bonus
-                    map::Bonus bonus{ b.at("id") };
-                    bonus.name() = b.at("name");
-                    bonus.color() = b.at("color");
-                    bonus.armies() = b.at("armies");
-                    for (const object_id_type& child : b.at("children"))
-                    {
-                        bonus.children().push_back({ child });
-                    }
-                    // Add bonus to map container
-                    map.bonuses().push_back(bonus);
+                    bonus.children().push_back({ child });
                 }
-                else
+                // Add bonus to map container
+                map.bonuses().push_back(bonus);
+            }
+
+            // Parse the super bonus information
+            for (const auto& s : json.at("super_bonuses"))
+            {
+                // Create super bonus
+                map::SuperBonus super_bonus{ s.at("id") };
+                super_bonus.name() = s.at("name");
+                super_bonus.color() = s.at("color");
+                super_bonus.armies() = s.at("armies");
+                for (const object_id_type& child : s.at("children"))
                 {
-                    // Create super bonus
-                    map::SuperBonus bonus{ b.at("id") };
-                    bonus.name() = b.at("name");
-                    bonus.color() = b.at("color");
-                    bonus.armies() = b.at("armies");
-                    for (const object_id_type& child : b.at("children"))
-                    {
-                        bonus.children().push_back({ child });
-                    }             
-                    // Add super bonus to map container
-                    map.bonuses().push_back(bonus);       
-                }
-                
+                    super_bonus.children().push_back({ child });
+                }             
+                // Add super bonus to map container
+                map.super_bonuses().push_back(super_bonus);    
             }
             
             // Return the resulting map container

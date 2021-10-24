@@ -112,40 +112,51 @@ target_link_libraries( ${PROJECT_NAME} PUBLIC
 # compressor.
 # https://www.sourceware.org/bzip2/
 # This is needed to work with compressed input and output (.bz2) files.
-include( ${VENDOR_CMAKE_DIR}/External-BZip2.cmake )
+find_package( BZip2 )
+if (NOT BZIP2_FOUND)
+    include( ${VENDOR_CMAKE_DIR}/External-BZip2.cmake )
+    add_dependencies( ${PROJECT_NAME} bzip2 )
+endif()
 
 # ZLIB is a massively spiffy yet delicately unobtrusive compression library.
 # https://zlib.net/
 # This is needed to work with protocol buffer format (.pbf) and other compressed
 # input and output files.
-include( ${VENDOR_CMAKE_DIR}/External-ZLib.cmake )
+find_package( ZLIB )
+if ( NOT ZLIB_FOUND )
+    include( ${VENDOR_CMAKE_DIR}/External-ZLib.cmake )
+    add_dependencies( ${PROJECT_NAME} zlib )
+endif()
 
 # PROTOZERO is a minimalistic protocol buffer decoder and encoder in C++.
 # https://github.com/mapbox/protozero
-include( ${VENDOR_CMAKE_DIR}/External-Protozero.cmake )
+find_package( Protozero )
+if ( NOT PROTOZERO_FOUND )
+    include( ${VENDOR_CMAKE_DIR}/External-Protozero.cmake )
+    add_dependencies( ${PROJECT_NAME} protozero )
+endif()
 
 # EXPAT is a a stream-oriented XML parser library written in C.
 # https://libexpat.github.io/
 # This is needed to work with common OSM XML file formats such as .osm files.
-include( ${VENDOR_CMAKE_DIR}/External-Expat.cmake )
+find_package( EXPAT )
+if ( NOT EXPAT_FOUND )
+    include( ${VENDOR_CMAKE_DIR}/External-Expat.cmake )
+    add_dependencies( ${PROJECT_NAME} expat )
+endif()
 
 # NLOHMANN-JSON is a modern JSON parser for C++
 # https://github.com/nlohmann/json
 include( ${VENDOR_CMAKE_DIR}/External-NLohmann-Json.cmake )
+add_dependencies( ${PROJECT_NAME} nlohmann-json )
 
 # OSMIUM is a fast and flexible C++ library for working with OpenStreetMap data.
 # https://osmcode.org/libosmium/
-include( ${VENDOR_CMAKE_DIR}/External-Libosmium.cmake )
-
-# Declare the dependencies
-add_dependencies( ${PROJECT_NAME}
-    bzip2
-    zlib
-    protozero
-    expat
-    nlohmann-json
-    libosmium
-)
+find_package( Osmium )
+if ( NOT OSMIUM_FOUND )
+    include( ${VENDOR_CMAKE_DIR}/External-Libosmium.cmake )
+    add_dependencies( ${PROJECT_NAME} libosmium )
+endif()
 
 # Include the built header-only and other depencies.
 target_include_directories( ${PROJECT_NAME} PUBLIC

@@ -8,6 +8,7 @@
 #include <boost/filesystem.hpp>
 
 #include "model/type.hpp"
+#include "util/join.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -93,6 +94,13 @@ namespace util
             );
         }
         // Validate bonus levels
+        if (bonus_levels.size() > 2)
+        {
+            throw std::invalid_argument(
+                "Specified more than 2 bonus levels: " + util::join(bonus_levels)
+                + ". Only one or two bonus levels are supported"
+            );
+        }
         for (const model::level_type& bonus_level : bonus_levels)
         {
             if (bonus_level < 1 || bonus_level > 12)

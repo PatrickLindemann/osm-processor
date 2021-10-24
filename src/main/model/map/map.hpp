@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "model/geometry/point.hpp"
+#include "model/geometry/segment.hpp"
 #include "model/geometry/multipolygon.hpp"
 #include "model/map/bonus.hpp"
 #include "model/map/territory.hpp"
@@ -54,6 +55,17 @@ namespace model
              * 
              */
             std::vector<Bonus> m_bonuses;
+
+
+            /**
+             * 
+             */
+            std::vector<SuperBonus> m_super_bonuses;
+
+            /**
+             * 
+             */
+            std::vector<geometry::Segment<double>> m_connections;
 
         public:
 
@@ -123,6 +135,26 @@ namespace model
                 return m_bonuses;
             }
             
+            std::vector<SuperBonus>& super_bonuses()
+            {
+                return m_super_bonuses;
+            }
+
+            const std::vector<SuperBonus>& super_bonuses() const
+            {
+                return m_super_bonuses;
+            }
+
+            std::vector<geometry::Segment<double>>& connections()
+            {
+                return m_connections;
+            }
+
+            const std::vector<geometry::Segment<double>>& connections() const
+            {
+                return m_connections;
+            }
+
         };
 
     }

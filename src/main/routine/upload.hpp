@@ -80,7 +80,8 @@ namespace routine
             map::Map map = io::reader::read_metadata(input_path.string()); 
 
             std::cout << "Preparing the request payload..." << std::endl;
-            std::string payload = util::get_payload(map_id, config, map);
+            std::string payload = util::create_payload(map_id, config, map);
+            std::cout << payload << std::endl;
             std::cout << "Prepared request data successfully." << std::endl;
 
             // Send the request
