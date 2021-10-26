@@ -6,6 +6,7 @@
 #include <set>
 
 #include "functions/util.hpp"
+#include "functions/detail/shamos_hoey.hpp"
 #include "model/geometry/line.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/ring.hpp"
@@ -20,15 +21,21 @@ namespace functions
 
     namespace detail
     {
-        
-        template<typename T>
+
+        /**
+         * 
+         */
+        template <typename T>
         bool compare_xy(const geometry::Point<T>& p1, const geometry::Point<T>& p2)
         {
-            if (p1.x() == p2.x())
-            {
-                return p1.y() < p2.y();
-            }
-            return p1.x() < p2.x();
+            // Test the x coordinate first
+            if (p1.x() < p2.x()) return true;
+            if (p1.x() > p2.x()) return false;
+            // Test the y coordinate
+            if (p1.y() < p2.y()) return true;
+            // if (p1.y() > p2.y()) return false;
+            // Points are the same
+            return false;
         }
 
         template <typename T>
@@ -37,7 +44,7 @@ namespace functions
             std::vector<geometry::Point<T>> points2
         ) {
             std::vector<geometry::Point<T>> diff;
-            std::sort(points1.begin(), points1.end(), compare_xy<T>);
+            std::sort(points1.begin(), points1.end(), compare_lt<T>);
             std::sort(points2.begin(), points2.end(), compare_xy<T>);
             std::set_difference(
                 points1.begin(),
@@ -48,118 +55,6 @@ namespace functions
                 compare_xy<T>
             );
             return diff;
-        }
-
-        template <typename T>
-        struct Event
-        {
-            int edge;
-            int type;
-            geometry::Point<T>& point;
-        };
-
-        template <typename T>
-        int compare(const Event<T>& e1, const Event<T>& e2)
-        {
-            const geometry::Point<T>& p1 = e1.point;
-            const geometry::Point<T>& p2 = e2.point;
-            // Sort by x coordinate first
-            if (p1.x() > p2.x()) return 1;
-            if (p1.x() < p2.x()) return -1;
-            // Sort by y coordinate
-            if (p1.y() > p2.y()) return 1;
-            if (p1.y() < p2.y()) return -1;
-            // Points are the same
-            return 0;
-        }
-
-        template <typename T>
-        struct SLSegment
-        {
-            int edge;
-            geometry::Point<T> left;
-            geometry::Point<T> right;
-            SLSegment<T>* above;
-            SLSegment<T>* below;
-        };
-
-        template <typename T>
-        class SweepLine
-        {
-
-            const geometry::Line<T>& m_line;
-            const size_t m_size;
-            std::set<geometry::Segment<T>> m_segments;
-
-            float is_left(
-                const geometry::Point<T>& point,
-                const SLSegment<T>& segment
-            ) {
-                const geometry::Point<T>& sl = segment.left;
-                const geometry::Point<T>& sr = segment.right;
-                return (sr.x() - sl.x()) * (point.y() - sl.y())
-                     - (sr.y() - sl.y()) * (point.x() - sl.x());
-            }
-
-        public:
-
-            SweepLine<T>(const geometry::Line<T>& line) : m_line(line), m_size(line.size()) {};
-
-            inline SLSegment<T>& add(Event<T> e)
-            {
-
-            }
-
-            inline SLSegment<T>& find(Event<T> e)
-            {
-
-            }
-
-            inline bool intersect(const SLSegment<T>& s1, const SLSegment<T>& s2)
-            {
-                // Check if the edges are consecutive in the line
-                const int& e1 = s1.edge;
-                const int& e2 = s2.edge;
-                if ((e1 + 1) % m_size == e2 || (e2 + 1) % m_size == e1)
-                {
-                    return false;
-                }
-                // Test for existence of an intersection point
-                float l_sign = is_left(s1.left, s2);
-                float r_sign = is_left(s1.right, s2);
-                if (l_sign * r_sign > 0)
-                {
-                    // Endpoints of s1 have the same sign relative
-                    // to s2
-                    return false;
-                }
-                l_sign = is_left(s2.left, s1);
-                r_sign = is_left(s2.right, s1);
-                if (l_sign * r_sign > 0)
-                {
-                    // Endpoints of s2 have the same sign relative
-                    // to s1
-                    return false;
-                }
-                // Found intersection
-                return true;
-            }
-
-            inline void remove(SLSegment<T>* s)
-            {
-
-            }
-
-        };
-
-
-        /**
-         * 
-         */
-        template <typename T>
-        bool shamos_hoey(std::vector<geometry::Segment<T>>& segments)
-        {
-            return false;
         }
 
     }
@@ -395,6 +290,7 @@ namespace functions
         }
         // Check any of the segment pairs intersect and return
         // the result
+        // return detail::intersects_shamos_hoey(segments);
         return segments_intersect(segments);
     }
 

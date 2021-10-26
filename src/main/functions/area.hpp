@@ -60,10 +60,10 @@ namespace functions
         double left_sum = 0.0;
         double right_sum = 0.0;
 
-        for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++)
+        for (size_t i = 0; i < ring.size() - 1; i++)
         {
-            left_sum += ring.at(j).x() * ring.at(i).y();
-            right_sum += ring.at(i).x() * ring.at(j).y();
+            left_sum += ring.at(i).x() * ring.at(i + 1).y();
+            right_sum += ring.at(i + 1).x() * ring.at(i).y();
         }
 
         return 0.5 * std::abs(left_sum - right_sum);

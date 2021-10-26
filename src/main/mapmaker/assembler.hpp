@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <cfloat>
+#include <iostream>
 #include <stack>
 #include <string>
 
@@ -9,6 +11,7 @@
 #include <osmium/osm/types.hpp>
 
 #include "functions/intersect.hpp"
+#include "functions/util.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
 #include "model/geometry/ring.hpp"
@@ -126,6 +129,55 @@ namespace mapmaker
                     envelope = { min_x, min_y, max_x, max_y };
                 }
 
+                /**
+                 * https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order/1180256#1180256 
+                 *
+                 */
+                void wind_direction(std::string direction = "ccw")
+                {
+                    // Check if the current ring is valid
+                    if (geometry.size() < 2)
+                    {
+                        return;
+                    }
+                    // Find the vertex with the smallest y coordinates
+                    size_t index = 0;
+                    model::geometry::Point<double> min = geometry.at(0);
+                    for (size_t i = 1; i < geometry.size() - 1; i++)
+                    {
+                        const model::geometry::Point<double>& point = geometry.at(i);
+                        if (point.y() < min.y())
+                        {
+                            index = i;
+                            min = point;
+                        }
+                    }
+                    // Get the predecessor and successor point of the minimum
+                    model::geometry::Point<double> left, right;
+                    if (index != 0 && index != geometry.size() - 1)
+                    {
+                        left = geometry.at(index - 1);
+                        right = geometry.at(index + 1);
+                    }
+                    else
+                    {
+                        left = geometry.at(geometry.size() - 2);
+                        right = geometry.at(1);
+                    }
+                    // Calculate the determinant AB * AC
+                    // Interpretation of d:
+                    // d < 0 : direction is counter-clock-wise
+                    // d > 0 : direction is clock-wise
+                    // d = 0 : points are collinear (ring is invalid)
+                    double d = (min.x() - right.x()) * (left.y() - right.y()) - (left.x() - right.x()) * (min.y() - right.y());
+                    // Check if the direction of the ring matches the specified direction
+                    if ((d < 0 && direction == "cw") || (d > 0 && direction == "ccw"))
+                    {
+                        // Ring is in the opposite direction, reverse it's ways and nodes
+                        std::reverse(nodes.begin(), nodes.end());
+                    }
+                }
+
             };
 
             /**
@@ -190,7 +242,7 @@ namespace mapmaker
                 // self-intersects. If not, the ring is valid.
                 return !functions::ring_self_intersects(ring.geometry);
             }
-            
+
             /**
              * 
              */
@@ -369,10 +421,6 @@ namespace mapmaker
 
                     // Retrieve other relevant relation tags
                     std::string name = relation.get_tag("name");
-                    if (name == "Kammeltal")
-                    {
-                        int a = 1;
-                    }
 
                     // Retrieve inner and outer ways
                     memory::EntityRefList<memory::WayRef> outer_ways;
@@ -397,7 +445,9 @@ namespace mapmaker
                     }
                     const auto inner_rings = create_rings(inner_ways);
 
-                    // ProtoGroup the rings
+                    // Filter inner rings that 
+
+                    // Group the rings
                     const auto groups = group_rings(outer_rings, inner_rings);
 
                     // Create the area
@@ -443,17 +493,25 @@ namespace mapmaker
 
                     // Retrieve the group
                     ProtoGroup group = groups.at(i);
+                    
+                    // Wind the outer ring in counter-clockwise direction
+                    ProtoRing& outer_proto = group.outer;
+                    outer_proto.wind_direction("ccw");
 
                     // Convert and add outer ring
-                    memory::Ring outer( 0, group.outer.nodes );
+                    memory::Ring outer( 0, outer_proto.nodes );
                     area.add_outer(outer);
-                    area.add_ways(group.outer.ways);
+                    area.add_ways(outer_proto.ways);
 
                     // Convert and add inner rings
                     for (size_t j = 0; j < group.inners.size(); j++)
                     {
-                        const ProtoRing& inner_proto = group.inners.at(j);
-                        memory::Ring inner(j, inner_proto.nodes) ;
+                        // Wind the inner ring in clockwise direction
+                        ProtoRing& inner_proto = group.inners.at(j);
+                        inner_proto.wind_direction("cw");
+
+                        // Convert and add the inner ring
+                        memory::Ring inner(j, inner_proto.nodes);
                         area.add_inner(outer, inner);
                         area.add_ways(inner_proto.ways);
                     }
@@ -496,15 +554,24 @@ namespace mapmaker
                     // Retrieve the group
                     ProtoGroup group = groups.at(i);
 
+                    // Wind the outer ring in counter-clockwise direction
+                    ProtoRing& outer_proto = group.outer;
+                    outer_proto.wind_direction("ccw");
+
                     // Convert and add outer ring
-                    memory::Ring outer( i, group.outer.nodes );
+                    memory::Ring outer( i, outer_proto.nodes );
                     area.add_outer(outer);
-                    area.add_ways(group.outer.ways);
+                    area.add_ways(outer_proto.ways);
 
                     // Convert and add inner rings
-                    for (const ProtoRing& inner_proto : group.inners)
+                    for (size_t j = 0; j < group.inners.size(); j++)
                     {
-                        memory::Ring inner(inner_id, inner_proto.nodes) ;
+                        // Wind the inner ring in clockwise direction
+                        ProtoRing& inner_proto = group.inners.at(j);
+                        inner_proto.wind_direction("cw");
+
+                        // Convert and add the inner ring
+                        memory::Ring inner(inner_id, inner_proto.nodes);
                         area.add_inner(outer, inner);
                         area.add_ways(inner_proto.ways);
                         ++inner_id;

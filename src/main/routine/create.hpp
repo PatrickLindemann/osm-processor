@@ -77,12 +77,12 @@ namespace routine
                 ("bonus-levels,b", po::value<std::vector<level_type>>(&bonus_levels)->multitoken(),
                     "Sets the admin_level of boundaries that will be be used as bonus links."
                     "\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
-                ("width,w", po::value<int>(&width)->default_value(-1),
+                ("width", po::value<int>(&width)->default_value(1000),
                     "Sets the generated map width in pixels."
-                    "\nIf set to 0, the width will be determined automatically.")
-                ("height,h", po::value<int>(&height)->default_value(0),
+                    "\nIf set to 0, the width will be determined automatically with the height.")
+                ("height", po::value<int>(&height)->default_value(0),
                     "Sets the generated map height in pixels."
-                    "\nIf set to 0, the height will be determined automatically.")
+                    "\nIf set to 0, the height will be determined automatically with the width.")
                 ("compression-tolerance,c", po::value<double>(&compression_epsilon)->default_value(0.0),
                         "Sets the minimum distance tolerance for the compression algorithm."
                         "\nIf set to 0, no compression will be applied.")
@@ -109,12 +109,6 @@ namespace routine
             {
                 fs::create_directory(FILE_DIR / "out");
                 outdir = fs::canonical(FILE_DIR / "/out");
-            }
-
-            // Set width default
-            if (width < 0)
-            {
-                width = 1000;
             }
 
             // Validate the parsed variables. If a variable is invalid,
@@ -173,6 +167,7 @@ namespace routine
                             << "  Nodes (after):  " << std::to_string(nodes_after) << std::endl;
             }
 
+            /*
             // Assemble the territory areas
             std::cout << "Assembling territories from relations..." << std::endl;    
             mapmaker::assembler::SimpleAreaAssembler territory_assembler{ data.nodes, data.ways, data.relations };
@@ -225,7 +220,7 @@ namespace routine
             // Apply the MercatorProjection
             transformer.apply(functions::MercatorProjection<double>{});
             // Apply the MirrorProjection
-            transformer.apply(functions::ScaleTranformation<double>{ 1.0, -1.0 });
+            // transformer.apply(functions::ScaleTranformation<double>{ 1.0, -1.0 });
             std::cout << "Applied projections sucessfully on " << data.nodes.size() << " nodes." << std::endl;
 
             // Scale the map
@@ -268,15 +263,12 @@ namespace routine
             std::cout << "Built geometries successfully. " << std::endl;
 
             // Calculate the centerpoints
-            /*
             std::cout << "Calculating centerpoints... " << std::endl;
             mapmaker::calculator::CenterCalculator center_calculator{ map.territories() };
-            center_calculator.calculate_centerpoints(bounds);
+            center_calculator.create_centerpoints();
             std::cout << "Calculated centerpoints successfully. " << std::endl;
-            */
            
             // Calculate connections
-
             if (!bonus_levels.empty())
             {
                 // Create the bonus hirarchy
@@ -318,6 +310,7 @@ namespace routine
             std::cout << "Data export finished successfully. " << std::endl;
 
             std::cout << "Finished Mapmaker after " << 0 << " seconds." << std::endl;
+            */
         }
 
     }
