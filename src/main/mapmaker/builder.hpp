@@ -192,6 +192,7 @@ namespace mapmaker
                         bonus.name() = area.name();
                         bonus.geometry() = create_multipolygon(area);
                         bonus.bounds() = functions::envelope(bonus.geometry());
+                        bonus.color() = "#ffffff";
 
                         // Add the bonus to the map
                         map.bonuses().push_back(bonus);
@@ -206,7 +207,8 @@ namespace mapmaker
                         super_bonus.name() = area.name();
                         super_bonus.geometry() = create_multipolygon(area);
                         super_bonus.bounds() = functions::envelope(super_bonus.geometry());
-                        
+                        super_bonus.color() = "#ffffff";
+
                         // Add the bonus to the map
                         map.super_bonuses().push_back(super_bonus);
                     }

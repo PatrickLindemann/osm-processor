@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/lexical_cast.hpp>
+#include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -112,9 +113,18 @@ namespace io
                 // Check if tag exists
                 if (value != nullptr)
                 {
-                    // Increase counters
-                    ++m_total;
-                    ++m_value_counts[boost::lexical_cast<value_type>(value)];
+                    try
+                    {
+                        // Convert the tag value
+                        value_type converted_value = boost::lexical_cast<value_type>(value);
+                        // Increase counters
+                        ++m_total;
+                        ++m_value_counts[converted_value];
+                    }
+                    catch (boost::bad_lexical_cast& e)
+                    {
+                        // Ignore value
+                    }
                 }       
             }
 

@@ -4,12 +4,12 @@
 #include <cmath>
 
 #include "model/geometry/point.hpp"
+#include "model/geometry/rectangle.hpp"
 #include "model/geometry/ring.hpp"
 #include "model/geometry/polygon.hpp"
 #include "functions/util.hpp"
 
 using namespace model;
-
 
 namespace functions
 {
@@ -148,6 +148,67 @@ namespace functions
             }
         }
         return distance;
+    }
+
+    /**
+     * Calculate the distance between two rectangles
+     * 
+     * https://stackoverflow.com/questions/4978323/how-to-calculate-distance-between-two-rectangles-context-a-game-in-lua
+     */
+    template <typename T>
+    inline double distance(
+        const geometry::Rectangle<T>& rect1,
+        const geometry::Rectangle<T>& rect2
+    ) {
+        bool left   = rect2.max().x() < rect1.min().x();
+        bool right  = rect1.max().x() < rect2.min().x();
+        bool bottom = rect2.max().y() < rect1.min().y();
+        bool top    = rect1.max().y() < rect2.min().y();
+
+        // 2D-Cases
+        if (left && top)
+        {
+            return distance<T>(
+                { rect1.min().x(), rect1.max().y() },
+                { rect2.max().x(), rect2.min().y() }
+            );
+        }
+        else if (left && bottom)
+        {
+            return distance(rect1.min(), rect2.max());
+        }
+        else if (right && top)
+        {
+            return distance(rect1.max(), rect2.min());
+        }
+        else if (right && bottom)
+        {
+            return distance<T>(
+                { rect1.max().x(), rect1.min().y() },
+                { rect2.min().x(), rect2.max().y() }
+            );
+        }
+
+        // 1D-Cases
+        if (left)
+        {
+            return rect1.min().x() - rect2.max().x(); 
+        }
+        else if (right)
+        {
+            return rect2.min().x() - rect1.max().x();
+        }
+        else if (top)
+        {
+            return rect2.min().y() - rect1.max().y();
+        }
+        else if (bottom)
+        {
+            return rect1.min().y() - rect2.max().y();
+        }         
+
+        // Rectangles intersect
+        return T(0);
     }
 
 }

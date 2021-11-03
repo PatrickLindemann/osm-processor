@@ -36,7 +36,7 @@ namespace mapmaker
 
             /* Types */
 
-            using component_map_type = std::unordered_map<component_type, std::vector<memory::AreaRef>>;
+            using component_map_type = std::unordered_map<component_type, std::vector<object_id_type>>;
 
             /* Members */
 
@@ -142,8 +142,8 @@ namespace mapmaker
                             graph::vertex_type v = stack.top();
                             stack.pop();
                             // Mark the current vertex as part of the component
-                            components.at(current_component).push_back({ v });
-                            // Mark all adjacents of this vertex if they haven't
+                            components.at(current_component).push_back(v);
+                            // Mark all adjacents of this vertex if they haven't    
                             // been visited already
                             for (const auto& adjacent : neighbors.adjacents(v))
                             {

@@ -167,7 +167,6 @@ namespace routine
                             << "  Nodes (after):  " << std::to_string(nodes_after) << std::endl;
             }
 
-            /*
             // Assemble the territory areas
             std::cout << "Assembling territories from relations..." << std::endl;    
             mapmaker::assembler::SimpleAreaAssembler territory_assembler{ data.nodes, data.ways, data.relations };
@@ -267,8 +266,7 @@ namespace routine
             mapmaker::calculator::CenterCalculator center_calculator{ map.territories() };
             center_calculator.create_centerpoints();
             std::cout << "Calculated centerpoints successfully. " << std::endl;
-           
-            // Calculate connections
+
             if (!bonus_levels.empty())
             {
                 // Create the bonus hirarchy
@@ -293,9 +291,6 @@ namespace routine
                 std::cout << "Calculated armies sucessfully" << std::endl;
             }
 
-
-            // Calculate connections
-
             // Export the map data as .svg file
             std::cout << "Exporting map data..." << std::endl;
             
@@ -310,7 +305,6 @@ namespace routine
             std::cout << "Data export finished successfully. " << std::endl;
 
             std::cout << "Finished Mapmaker after " << 0 << " seconds." << std::endl;
-            */
         }
 
     }

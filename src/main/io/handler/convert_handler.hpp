@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <osmium/tags/tags_filter.hpp>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -21,14 +22,13 @@
 #include "model/memory/way.hpp"
 #include "model/type.hpp"
 
+using namespace model;
+
 namespace io
 {
 
     namespace handler
     {
-
-        using namespace model;
-        using namespace model::memory;
 
         /**
          * A handler that converts a stream of osmium objects to
@@ -59,11 +59,11 @@ namespace io
              * For more information, refer to
              * https://wiki.openstreetmap.org/wiki/Key:admin_level
              */
-            std::array<bool, 13> m_filter;
+            osmium::TagsFilter m_filter;
             
-            Buffer<Node> m_nodes;
-            Buffer<Way> m_ways;
-            Buffer<Relation> m_relations;
+            memory::Buffer<memory::Node> m_nodes;
+            memory::Buffer<memory::Way> m_ways;
+            memory::Buffer<memory::Relation> m_relations;
 
             /**
              * The identifier maps that map osmium object ids to ids in the
@@ -84,26 +84,27 @@ namespace io
                 const std::vector<level_type>& bonus_levels
             ) {
                 // Initialize the level filter for relations
-                m_filter.at(territory_level) = 1;
+                m_filter = osmium::TagsFilter{false};
+                m_filter.add_rule(true, "admin_level", territory_level);
                 for (const auto& level : bonus_levels)
                 {
-                    m_filter.at(level) = 1;
+                    m_filter.add_rule(true, "admin_level", level);
                 }
             }
 
             /* Accessors */
 
-            Buffer<Node>& nodes()
+            memory::Buffer<memory::Node>& nodes()
             {
                 return m_nodes;
             }
 
-            Buffer<Way>& ways()
+            memory::Buffer<memory::Way>& ways()
             {
                 return m_ways;
             }
 
-            Buffer<Relation>& relations()
+            memory::Buffer<memory::Relation>& relations()
             {
                 return m_relations;
             }
@@ -122,13 +123,13 @@ namespace io
              * @returns        A reference to the node in the
              *                 internal buffer
              */
-            Node& create_node(const osmium::NodeRef& osm_node)
+            memory::Node& create_node(const osmium::NodeRef& osm_node)
             {   
                 // Check if node was inserted already
                 auto it = m_nids.find(osm_node.ref());
                 if (it != m_nids.end())
                 {
-                    // Node already exists, return it
+                    // memory::Node already exists, return it
                     return m_nodes.at(it->second); 
                 }
                 // Convert the osmium node and add the result to the node buffer
@@ -149,13 +150,13 @@ namespace io
              * @returns        A reference to the way in the
              *                 internal buffer
              */
-            Way& create_way(const osmium::Way& osm_way)
+            memory::Way& create_way(const osmium::Way& osm_way)
             {
                 // Check if way was inserted already
                 auto it = m_wids.find(osm_way.id());
                 if (it != m_wids.end())
                 {
-                    // Way exists, return it
+                    // memory::Way exists, return it
                     return m_ways.at(it->second); 
                 }
                 // Convert the osmium way and add the result to the way buffer
@@ -163,11 +164,11 @@ namespace io
                 m_wids[osm_way.id()] = mapped_id;
                 m_ways.push_back({ mapped_id });
                 // Add the osmium nodes to the created way and to the node buffer
-                Way& way = m_ways.at(mapped_id);
+                memory::Way& way = m_ways.at(mapped_id);
                 way.reserve(osm_way.nodes().size());
                 for (const auto& osm_node : osm_way.nodes())
                 {
-                    Node& node = create_node(osm_node);
+                    memory::Node& node = create_node(osm_node);
                     way.push_back(node.id());
                 }
                 // Return a reference to the newly created way in the container
@@ -182,17 +183,21 @@ namespace io
              */
             bool new_relation(const osmium::Relation& osm_relation) const
             {
-                // Ignore relations without "type" tag
                 const char* type = osm_relation.tags().get_value_by_key("type");
+
+                // Ignore relations without "type" tag
                 if (type == nullptr)
                 {
                     return false;
                 }
-                // Check if relation has a level that was specified to be
-                // filtered for.
-                const char* admin_level = osm_relation.tags().get_value_by_key("admin_level", "-1");
-                level_type level = boost::lexical_cast<level_type>(admin_level);
-                return level > 0 && m_filter.at(level) == true;
+
+                if (((!std::strcmp(type, "multipolygon")) || (!std::strcmp(type, "boundary"))) && osmium::tags::match_any_of(osm_relation.tags(), m_filter)) {
+                    return std::any_of(osm_relation.members().cbegin(), osm_relation.members().cend(), [](const osmium::RelationMember& member) {
+                        return member.type() == osmium::item_type::way;
+                    });
+                }
+
+                return false;
             }
 
             /**
@@ -206,7 +211,7 @@ namespace io
                 object_id_type mapped_id = m_rids.size();
                 m_rids[osm_relation.id()] = mapped_id;
                 // Create and add the new area
-                Relation relation = { mapped_id };
+                memory::Relation relation = { mapped_id };
                 // Add the tag values
                 relation.add_tag("name", osm_relation.get_value_by_key("name", ""));
                 relation.add_tag("type", osm_relation.get_value_by_key("type", ""));
@@ -222,13 +227,13 @@ namespace io
                         // Retrieve way from osmium object buffer
                         const osmium::Way* osm_way = this->get_member_way(osm_member.ref());
                         // Create the way if it doesn't already exists
-                        Way& way = create_way(*osm_way);
+                        memory::Way& way = create_way(*osm_way);
                         // Add a reference to the current area depending
                         // on the member role
                         std::string role{ osm_member.role() };
                         if (role == "outer" || role == "inner")
                         {
-                            relation.add_member({ way.id(), Member::Type::WAY, role });
+                            relation.add_member({ way.id(), memory::Member::Type::WAY, role });
                         }
                         // throw std::invalid_argument("Invalid relation member role");
                     }
@@ -252,9 +257,7 @@ namespace io
                 }
 
                 // Check way's admin level
-                const char * admin_level = osm_way.get_value_by_key("admin_level", "-1");
-                level_type level = boost::lexical_cast<level_type>(admin_level);
-                if (level < 0 || !m_filter.at(level))
+                if (!osmium::tags::match_any_of(osm_way.tags(), m_filter))
                 {
                     return;
                 }

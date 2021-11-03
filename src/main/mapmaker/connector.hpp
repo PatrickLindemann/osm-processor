@@ -1,14 +1,24 @@
 #pragma once
 
+#include <cfloat>
+#include <system_error>
+#include <unordered_set>
+
+#include "functions/distance.hpp"
 #include "functions/envelope.hpp"
 #include "functions/intersect.hpp"
+#include "functions/convex_hull.hpp"
 #include "model/geometry/multipolygon.hpp"
+#include "model/geometry/point.hpp"
 #include "model/geometry/polygon.hpp"
+#include "model/geometry/rectangle.hpp"
 #include "model/geometry/ring.hpp"
 #include "model/geometry/segment.hpp"
+#include "model/graph/undirected_graph.hpp"
 #include "model/map/territory.hpp"
 #include "model/map/bonus.hpp"
 #include "model/type.hpp"
+
 
 using namespace model;
 
@@ -264,36 +274,209 @@ namespace mapmaker
             }
         };
 
-        /**
-         * 
-         */
-        class ConnectionCalculator
-        {
+        // /**
+        //  * 
+        //  */
+        // class ConnectionCalculator
+        // {
 
-            /* Members */
+        //     /* Types */
 
-            std::vector<map::Territory>& m_territories;
+        //     using component_map_type = std::unordered_map<component_type, std::vector<object_id_type>>;
 
-        public:
+        //     /* Members */
 
-            ConnectionCalculator(std::vector<map::Territory>& territories) : m_territories(territories) {}
+        //     std::vector<map::Territory>& m_territories;
+        //     component_map_type& m_components;
 
-        protected:
+        //     // Caches
+        //     std::unordered_map<component_type, geometry::Rectangle<double>> m_bounds_cache;
+        //     std::unordered_map<component_type, geometry::Ring<double>> m_hull_cache;
 
-        public:
+        // public:
 
-            std::vector<geometry::Segment<double>> calculate_connections()
-            {
-                std::vector<geometry::Segment<double>> segments;
-                for (const map::Territory& territory : m_territories)
-                {
-                    
-                }
-                return segments;
-            };
+        //     ConnectionCalculator(
+        //         std::vector<map::Territory>& territories,
+        //         component_map_type& components
+        //     ) : m_territories(territories), m_components(components) {}
 
-        };
+        // protected:
 
+        //     struct PointHasher
+        //     {
+        //         size_t operator()(const geometry::Point<double>& point) const
+        //         {
+        //             size_t xHash = std::hash<int>()(point.x());
+        //             size_t yHash = std::hash<int>()(point.y()) << 1;
+        //             return xHash ^ yHash;
+        //         }
+        //     };
+
+        //     void calculate_bounds()
+        //     {
+        //         for (const auto[component, territories] : m_components)
+        //         {
+        //             double min_x = DBL_MAX;
+        //             double min_y = DBL_MAX;
+        //             double max_x = -DBL_MAX;
+        //             double max_y = -DBL_MAX;
+        //             for (const object_id_type& t : territories)
+        //             {
+        //                 const map::Territory& territory = m_territories.at(t);
+        //                 geometry::Rectangle<double> envelope = functions::envelope(territory.geometry());
+        //                 min_x = std::min(min_x, envelope.min().x());
+        //                 min_y = std::min(min_y, envelope.min().y());
+        //                 max_x = std::min(max_x, envelope.max().x());
+        //                 max_y = std::min(max_y, envelope.max().y());
+        //             }
+        //             m_bounds_cache[component] = geometry::Rectangle<double>{ min_x, min_y, max_x, max_y };
+        //         }
+        //     }
+
+        //     void calculate_hulls()
+        //     {
+        //         for (const auto[component, territories] : m_components)
+        //         {
+        //             // Collect the outer points of all territories
+        //             std::unordered_set<geometry::Point<double>, PointHasher> unique_points{};
+        //             for (const object_id_type& t : territories)
+        //             {
+        //                 const map::Territory& territory = m_territories.at(t);
+        //                 for (const geometry::Point<double>& point : territory.geometry().outer())
+        //                 {
+        //                     unique_points.insert(point);
+        //                 }
+        //             }
+        //             // Calculate the convex hull and save it
+        //             std::vector<geometry::Point<double>> points;
+        //             points.insert(points.end(), unique_points.begin(), unique_points.end());
+        //             m_hull_cache[component] = functions::convex_hull(points);
+        //         }
+        //     }
+
+        //     /**
+        //      * 
+        //      */
+        //     geometry::Segment<double> find_nearest_connection(
+        //         const geometry::Ring<double> hull1,
+        //         const geometry::Ring<double> hull2
+        //     ) {
+        //         std::pair<geometry::Point<double>,geometry::Point<double>> pair;
+        //         double d_min = DBL_MAX;
+        //         for (auto it1 = hull1.begin(); it1 != hull1.end(); it1++)
+        //         {
+        //             for (auto it2 = hull2.begin(); it2 != hull2.end(); it2++)
+        //             {
+        //                 double d = functions::distance(*it1, *it2);
+        //                 if (d < d_min)
+        //                 {
+        //                     d_min = d;
+        //                     pair.first = *it1;
+        //                     pair.second = *it2; 
+        //                 }
+        //             }
+        //         }
+        //         return geometry::Segment<double> { pair.first, pair.second };
+        //     }
+
+        //     map::Territory& get_territory_for_point(
+        //         const component_type& component1,
+        //         const geometry::Point<double>& point
+        //     ) {
+        //         std::vector<object_id_type> territories = m_components.at(component1);
+        //         for (const object_id_type t : territories)
+        //         {
+        //             map::Territory& territory = m_territories.at(t);
+        //             for (const geometry::Point<double>& p : territory.geometry().outer())
+        //             {
+        //                 if (point == p)
+        //                 {
+        //                     return territory;
+        //                 }
+        //             }
+        //         }
+        //         // Should not happen
+        //         throw std::invalid_argument("No territory found");
+        //     }
+
+        //     void merge(const component_type& c1, const component_type& c2)
+        //     {
+        //         if (m_components.size() == 2)
+        //         {
+        //             // Only one component left after merge, no need to perform other calculations
+        //             m_components.erase(c2);
+        //             return;
+        //         }
+
+        //         // Calculate new bounding box
+
+
+        //     }
+
+        // public:
+
+        //     std::vector<geometry::Segment<double>> calculate_connections()
+        //     {
+        //         if (m_components.size() < 2)
+        //         {
+        //             // No connecting needs to be performed
+        //             return {};
+        //         }
+
+        //         // Prepare the resulting connections vector
+        //         std::vector<geometry::Segment<double>> connections;
+
+        //         // Pre-Calculate the bounding boxes and convex hulls of each component
+        //         calculate_bounds();
+        //         calculate_hulls();
+
+        //         // Merge the components until only one is left
+        //         while (m_components.size() > 1)
+        //         {
+        //             // Find the nearest component for each component using their bounding
+        //             // boxes
+        //             for (auto it1 = m_components.begin(); it1 != m_components.end(); it1++)
+        //             {
+        //                 component_type component1 = it1->first;
+        //                 const geometry::Rectangle<double>& bounds1 = m_bounds_cache.at(it1->first);
+        //                 // Find nearest other component by using the bounding boxes
+        //                 double d_min = DBL_MAX;
+        //                 component_type nearest_component = -1;
+        //                 for (auto it2 = it1; it2 != m_components.end(); it2++)
+        //                 {
+        //                     component_type component2 = it2->first;
+        //                     const geometry::Rectangle<double>& bounds2 = m_bounds_cache.at(it2->first);
+        //                     double d = functions::distance(bounds1, bounds2);
+        //                     if (d < d_min)
+        //                     {
+        //                         d_min = d;
+        //                         nearest_component = component2;
+        //                         if (d_min == 0)
+        //                         {
+        //                             // Component bounds intersect, skip the rest
+        //                             break;
+        //                         }
+        //                     }
+        //                 }
+        //                 // Find nearest points of the convex hulls
+        //                 const geometry::Ring<double>& hull1 = m_hull_cache.at(component1);
+        //                 const geometry::Ring<double>& hull2 = m_hull_cache.at(nearest_component);
+        //                 geometry::Segment<double> connection = find_nearest_connection(hull1, hull2);
+        //                 // Add the connection to the result list
+        //                 connections.push_back(connection);
+        //                 // Find the territories the points belong to and add a neighbor relation
+        //                 map::Territory& t1 = get_territory_for_point(component1, connection.first());
+        //                 map::Territory& t2 = get_territory_for_point(nearest_component, connection.last());
+        //                 t1.neighbors().push_back({ t2.id() });
+        //                 t2.neighbors().push_back({ t1.id() });
+        //                 // Merge the current two components, their bounding boxes and convex hulls
+        //                 merge(component1, nearest_component);
+        //             }
+        //         }
+        //         return connections;
+        //     };
+
+        // };
 
     }
 

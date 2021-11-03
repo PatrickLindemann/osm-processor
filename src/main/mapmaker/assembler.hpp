@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <boost/lexical_cast/bad_lexical_cast.hpp>
 #include <cfloat>
 #include <iostream>
 #include <stack>
@@ -410,15 +411,24 @@ namespace mapmaker
                 // Convert areas from the relations
                 for (const memory::Relation& relation : m_relation_buffer)
                 {
-                    // Filter relations by their level
-                    level_type level = boost::lexical_cast<level_type>(
-                        relation.get_tag("admin_level", "0")
-                    );
-                    if (!filter.at(level))
+                    // Retrieve the relation admin_level
+                    level_type level = 0;
+                    try
+                    {
+                        // Convert the tag value
+                        level = boost::lexical_cast<level_type>(relation.get_tag("admin_level"));
+                    }
+                    catch (boost::bad_lexical_cast& ex)
                     {
                         continue;
                     }
 
+                    // Filter relations by their level
+                    if (!filter.at(level))
+                    {
+                        continue;
+                    }
+                
                     // Retrieve other relevant relation tags
                     std::string name = relation.get_tag("name");
 

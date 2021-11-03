@@ -13,6 +13,7 @@
 #include "model/memory/node.hpp"
 #include "model/memory/relation.hpp"
 #include "model/memory/way.hpp"
+#include "model/type.hpp"
 
 using namespace model;
 
@@ -31,7 +32,7 @@ namespace mapmaker
 
             /* Types */
 
-            using component_map_type = std::unordered_map<component_type, std::vector<memory::AreaRef>>;
+            using component_map_type = std::unordered_map<component_type, std::vector<object_id_type>>;
             using id_map_type  = std::unordered_map<object_id_type, object_id_type>;
 
         protected:
@@ -80,7 +81,7 @@ namespace mapmaker
                 // Pre-calculate the surface areas for areas with the
                 // specified level and compute the total surface area
                 double total_surface_area = 0.0;
-                std::unordered_map<memory::AreaRef, double, memory::EntityRefHasher> surface_areas;
+                std::unordered_map<object_id_type, double> surface_areas;
                 for (const memory::Area& area : m_area_buffer)
                 {
                     // Convert the outer ring of the area
@@ -93,7 +94,7 @@ namespace mapmaker
                         outer.push_back(node.point());
                     }
                     double surface_area = functions::area(outer);
-                    surface_areas[{ area.id() }] = surface_area;
+                    surface_areas[area.id()] = surface_area;
                     total_surface_area += surface_area;
                 }
 
@@ -102,7 +103,7 @@ namespace mapmaker
                 {
                     // Get the component surface area
                     double component_surface_area = 0.0;
-                    for (const memory::AreaRef& ar : it->second)
+                    for (const object_id_type ar : it->second)
                     {
                         component_surface_area += surface_areas.at(ar);
                     }
@@ -113,14 +114,14 @@ namespace mapmaker
                     {
                         // Mark all areas and their way references in that component
                         // for removal
-                        for (const memory::AreaRef& ar : it->second)
+                        for (const object_id_type ar : it->second)
                         {
                             const memory::Area& area = m_area_buffer.at(ar);
                             for (const memory::WayRef& wr : area.ways())
                             {
                                 removed_ways.at(wr.ref()) = true;
                             }
-                            removed_areas.at(ar.ref()) = true;
+                            removed_areas.at(ar) = true;
                         }
                         // Remove component from the component map
                         m_components.erase(it++);
