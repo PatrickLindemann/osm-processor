@@ -1,6 +1,6 @@
 ![](https://github.com/PatrickLindemann/warzone-osm-mapmaker/blob/master/doc/mapmaker.svg?raw=true)
 
-This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact the author [Patrick Lindemann](https://github.com/PatrickLindemann).
+This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact an [author](#authors).
 
 ## Contents
 
@@ -168,7 +168,7 @@ Now, you can inspect your map in the [Warzone Map Designer](https://www.warzone.
 
 After you uploaded the map, you can upload the metadata of the generated `.json` with the mapmaker. Before you can proceed, you first need to retrieve the id of your uploaded map:
 
-1. Open your map in the [Warzone Map Designer](https://www.warzone.com/MultiPlayer?DesignMaps=1)
+1. Open your map in the [Warzone Map Designer](https://www.warzone.com/MultiPlayer?DesignMaps=1).
 2. Under *Map Versions*, click on *Edit* on your preferred map version (if you just uploaded the map, it will be 1.0).
 3. In the left sidebar, click the button *Link for Sharing*.
 4. A window with a public and private link will appear. You only need the public link, which has the pattern `https://www.warzone.com/SinglePlayer?PreviewMap=12345`. Copy the trailing number (here: `12345`), which is your map id.
