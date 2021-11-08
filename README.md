@@ -1,7 +1,5 @@
 ![](https://github.com/PatrickLindemann/warzone-osm-mapmaker/blob/master/doc/mapmaker.svg?raw=true)
 
-This command line utility creates maps for the online strategy game [Warzone](https://www.warzone.com/) by using OpenStreetMap (OSM) data.
-
 This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact the author [Patrick Lindemann](https://github.com/PatrickLindemann).
 
 ## Contents
