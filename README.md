@@ -1,10 +1,8 @@
-# Warzone OSM Mapmaker
-
 ![](https://github.com/PatrickLindemann/warzone-osm-mapmaker/blob/master/doc/mapmaker.svg?raw=true)
 
 This command line utility creates maps for the online strategy game [Warzone](https://www.warzone.com/) by using OpenStreetMap (OSM) data.
 
-This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact the initial author [Patrick Lindemann](https://github.com/PatrickLindemann).
+This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact the author [Patrick Lindemann](https://github.com/PatrickLindemann).
 
 ## Contents
 
@@ -13,23 +11,22 @@ This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted
     * [Preparing The Extract (Optional)](#preparing-the-extract-optional)
     * [Inspecting The Extract](#inspecting-the-extract)
     * [Creating The Map](#creating-the-map)
-    * [Tips for Creators](#tips-for-creators)
+    * [Tips for Map Creators](#tips-for-map-creators)
 * [Map Upload](#map-upload)
-    * [Uploading to Warzone](#uploading-to-warzone)
-    * [API Setup](#api-setup)
-    * [Adding Metadata](#adding-metadata)
+    * [Setup](#setup)
+    * [Uploading the Map](#uploading-the-map)
+    * [Uploading the Metadata](#uploading-the-metadata)
 * [Building the Project (Ubuntu)](#building-the-project-ubuntu)
     * [Pre-Requisites](#pre-requisites)
     * [Installation](#installation)
 * [Built With](#built-with)
 * [Authors](#authors)
-* [Helpful Links](#helpful-links)
 
 ## Map Creation
 
 If you are not familiar with the [OpenStreetMap](https://www.openstreetmap.org/) project or [Warzone](https://www.warzone.com/), we recommend that you find more about them in the [OpenStreetMap Wiki](https://wiki.openstreetmap.org/wiki/Main_Page) or [Warzone Wiki](https://www.warzone.com/wiki/Main_Page), repsectively.
 
-This tool depends on real OpenStreetMap data in order to generate the playable maps. In detail, *administrative* [boundary areas](https://wiki.openstreetmap.org/wiki/Key:boundary) with specified [admin_levels](https://wiki.openstreetmap.org/wiki/Key:admin_level) are extracted from an input file and put together into a [Warzone Map](https://www.warzone.com/wiki/Map). The meaning of administrative levels differs between countries, a mapping can be found in this [table](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#10_admin_level_values_for_specific_countries).
+This tool depends on real OpenStreetMap data in order to generate the playable maps. In detail, *administrative* [boundary areas](https://wiki.openstreetmap.org/wiki/Key:boundary) with specified [admin_levels](https://wiki.openstreetmap.org/wiki/Key:admin_level) are extracted from an input file and put together into a [Warzone Map](https://www.warzone.com/wiki/Map). The meaning of administrative levels differs between countries, a mapping can be found in this [table](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#10_admin_level_values_for_specific_countries). You can visualize the administrative borders of various countries with tools such as [OSM-Boundaries](https://osm-boundaries.com/Map).
 
 You can control which boundaries are extracted as [territories](https://www.warzone.com/wiki/Territories) and [bonuses](https://www.warzone.com/wiki/Bonus) (and super-bonuses) with the two parameters
 
@@ -53,7 +50,7 @@ If you work with larger map extracts (> 10MB in compressed size), we strongly re
 To prepare your map extract, use the following command:
 
 ```
-./warzone-osm-mapmaker prepare <input-file> [parameters]
+./warzone-osm-mapmaker prepare <path/to/file.osm.pbf> [parameters]
 ```
 
 This will create a pre-filtered file with the naming schema `<input-file>-prepared.osm.pbf`. Afterwards, you can use this file for the next map creation steps.
@@ -109,16 +106,14 @@ Usually, you want to customize your generated map. For this, we offer a list of 
 | --verbose | -v | Enable verbose logging. | flag ||
 | --help | -h | Show the help message. | flag ||
 
-### Tips for Creators
+### Tips for Map Creators
 * The width and height of your map should not exceed 2500x2500 pixels, as Warzone does not accept larger map sizes.
 * Your generated map `.svg` should not exceed 2.5MB, as Warzone does not accept larger file sizes. You can reduce the map size by applying a greater compression tolerance.
 * Currently, creating super bonuses is not possible through the Warzone API. If you add more than one bonus level, you need to add the super bonus metadata manually through the Warzone Mapmaker.
 
 ## Map Upload
 
-After you've generated your map, you can use Warzone to playtest it.
-
-In order to upload maps to the [Warzone Community Map Explorer](https://www.warzone.com/SinglePlayer/CommunityLevels), you will first need to create a [Warzone Account](https://www.warzone.com/SignUp2). Afterwards, you can upload the generated map svg [here](https://www.warzone.com/MultiPlayer?DesignMaps=1).
+In order to upload maps to the [Warzone Community Map Explorer](https://www.warzone.com/SinglePlayer/CommunityLevels), you will first need to create a [Warzone Account](https://www.warzone.com/SignUp2). Afterwards, you can continue with the Setup.
 
 ### Setup
 
@@ -160,10 +155,60 @@ The setup command accepts the following parameters:
 
 ### Uploading the Map
 
-As of November 2021, Warzone offers no API endpoint to upload a generated map. Therefore, you need to upload your map manually.
+As of November 2021, Warzone offers no API endpoint to upload a generated map. Therefore, you need to upload your map manually by using the Warzone interface:
+
+1. Open your browser and go to Warzone's home page https://www.warzone.com.
+2. On the navigation bar on the top right, extend the item *Multi-Player* and select *Design Maps*.
+3. Click on the button *Add New Map*.
+4. In the appearing file explorer, find your generated `.svg` map file and upload it.
+5. Next, a window will appear where you can enter a title and description for your map. After you filled out both fields, click on the *Submit* button.
+6. If everything worked correctly, a new card with the name of your map will appear. If not, an error message will be shown.
+
+Now, you can inspect your map in the [Warzone Map Designer](https://www.warzone.com/MultiPlayer?DesignMaps=1) by opening and editing it. You will see that the borders of the territories and their center points are displayed in the editor, yet no names or connections are available. We will upload this metadata in the next step.
 
 ### Uploading the metadata
 
+After you uploaded the map, you can upload the metadata of the generated `.json` with the mapmaker. Before you can proceed, you first need to retrieve the id of your uploaded map:
+
+1. Open your map in the [Warzone Map Designer](https://www.warzone.com/MultiPlayer?DesignMaps=1)
+2. Under *Map Versions*, click on *Edit* on your preferred map version (if you just uploaded the map, it will be 1.0).
+3. In the left sidebar, click the button *Link for Sharing*.
+4. A window with a public and private link will appear. You only need the public link, which has the pattern `https://www.warzone.com/SinglePlayer?PreviewMap=12345`. Copy the trailing number (here: `12345`), which is your map id.
+
+Now, you can upload the generated metadata with the upload command:
+
+```
+./warzone-osm-mapmaker upload <path/to/file.json> <map-id> [parameters]
+```
+
+At last, the result of the upload request will apper on the screen. If it was sucessful, the message will look like this:
+
+```
+{
+  "termsOfUse" : "[...]",
+  "Success" : ""
+}
+```
+
+If an error occured during the upload, the message will contain an error:
+
+```
+{
+  "termsOfUse" : "[...]",
+  "Error" : " [...]"
+}
+```
+
+You can use the error message to identify and fix the error.
+
+#### Parameters
+
+The upload command accepts the following parameters:
+
+| Parameter | Short | Description | Type | Default |
+|-----------|-------|-------------|------|---------|
+| --config | -c | The path to the config.json file. | string | ./config.json |
+| --help | -h | Show the help message. | flag ||
 
 ## Building the Project (Ubuntu)
 
@@ -197,10 +242,10 @@ All other dependencies will be installed automatically by the super build during
 
 ### Installation
 
-1. Clone this repository
+1. Clone this repository via
 
 ```
-git clone https://github.com/PatrickLindemann/warzone-osm-processor.git
+git clone https://github.com/PatrickLindemann/warzone-osm-mapmaker.git
 ```
 
 2. Build the project
@@ -221,17 +266,7 @@ If the installation was sucessful, a help message with the available commands wi
 
 ## Building the Project (Windows)
 
-This section provides an installation guide for 64-Bit Windows systems.
-
-### Pre-Requisites
-
-#### Git
-
-#### MinGW
-
-#### Boost
-
-### Installation
+TODO: This section will provide an installation guide for 64-Bit Windows systems.
 
 ## Built with
 
