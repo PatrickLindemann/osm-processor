@@ -19,4 +19,4 @@ ExternalProject_Add(
 )
 
 # Set include path
-set( NLOHMANN_JSON_INCLUDE_DIR ${NLOHMANN_JSON_SOURCE_DIR}/include )
+set( NLOHMANN_JSON_INCLUDE_DIR ${NLOHMANN_JSON_SOURCE_DIR}/single_include )

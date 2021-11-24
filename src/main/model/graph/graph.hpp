@@ -54,7 +54,7 @@ namespace model
              * Returns the size of the graph, which is a pair of the number
              * of vertices and number of edges. 
              */
-            virtual std::pair<size_t, size_t> size() const
+            virtual std::pair<std::size_t, std::size_t> size() const
             {
                 return std::make_pair(m_vertices.size(), m_edges.size());
             }
@@ -89,7 +89,7 @@ namespace model
             /**
              * Retrieves the vertex count in the graph.
              */
-            virtual size_t vertex_count() const
+            virtual std::size_t vertex_count() const
             {
                 return m_vertices.size();
             }
@@ -130,7 +130,7 @@ namespace model
             /**
              * Retrieves the edge count in the graph.
              */
-            virtual size_t edge_count() const
+            virtual std::size_t edge_count() const
             {
                 return m_edges.size();
             }
@@ -182,7 +182,7 @@ namespace model
              * @param Vertex The vertex
              * @throws       std::out_of_range If the vertex does not exist
              */
-            virtual size_t degree(const vertex_type& vertex) const = 0;
+            virtual std::size_t degree(const vertex_type& vertex) const = 0;
         	
             /**
              * Retrieves the adjacending vertices for a specified vertex
@@ -191,7 +191,7 @@ namespace model
              * @param Vertex The vertex
              * @throws       std::out_of_range If the vertex does not exist
              */
-            virtual const std::vector<vertex_type> adjacents(const vertex_type& vertex) const = 0;
+            virtual const std::set<vertex_type> adjacents(const vertex_type& vertex) const = 0;
 
         };
 

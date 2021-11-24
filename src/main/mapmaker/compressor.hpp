@@ -1,240 +1,166 @@
 #pragma once
 
-#include <cassert>
-#include <stack>
-#include <unordered_map>
+#include <map>
+#include <set>
 
-#include "functions/distance.hpp"
-#include "model/geometry/point.hpp"
-#include "model/memory/node.hpp"
-#include "model/memory/way.hpp"
-#include "model/memory/buffer.hpp"
-#include "model/type.hpp"
+#include <osmium/builder/osm_object_builder.hpp>
+#include <osmium/handler/node_locations_for_ways.hpp>
+#include <osmium/index/map/flex_mem.hpp>
+#include <osmium/osm/types.hpp>
+
+#include "handler/compression_handler.hpp"
 
 namespace mapmaker
 {
 
-    namespace compressor
+    class Compressor
     {
+    protected:
 
-        using namespace model;
-        using namespace model::memory;
-        using namespace model::geometry;
+        /* Types */
 
-        class Compressor
+       /**
+        * The type of index used. This must match the include file above
+        */
+        using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+
+        /**
+         * The location handler always depends on the index type
+         */
+        using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+
+        /* Members */
+
+        double m_tolerance;
+
+    public:
+
+        /* Constructors */
+
+        /**
+         * Run the compressor on the way and node buffers.
+         * Nodes and ways that were removed by the compression will be
+         * removed in the respective buffers.
+         *
+         * For more information on finding a good tolerance value, refer
+         * to https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+         *
+         * @param tolerance The distance epsilon for the Douglas-Peucker-Algorithm.
+         *
+         * Time complexity: Log-Linear (Average-case), Quadratic (Worst-case)
+         */
+        Compressor(double tolerance) : m_tolerance(tolerance) {}
+            
+        /* Methods */
+
+        void run(osmium::memory::Buffer& buffer)
         {
-
-            /* Types */
-
-            using id_map_type = std::unordered_map<object_id_type, object_id_type>;
-
-            /* Members */
-
-            Buffer<Node>& m_node_buffer;
-            Buffer<Way>& m_way_buffer;
-            
-            /**
-             *  The compression result vector of node indices that indicates
-             *  which nodes should be kept or removed.
-             *  If kept_indices[i] == true, the node with index i will be kept,
-             *  else it will be removed.
-             */
-            std::vector<bool> m_removed_nodes;
-
-            /**
-             * The lookup vector for node degrees.
-             * These nodes will be ignored by the compressor in order
-             * to prevent different compressions of node segments
-             */
-            std::vector<size_t> m_degrees;
-
-        public:
-
-            /* Constructor */
-
-            /**
-             * Create a new compressor for a set of buffers and a specified
-             * tolerance greater than zero.
-             *
-             * @param nodes     The node buffer
-             * @param ways      The way buffer
-             */
-            Compressor(Buffer<Node>& nodes, Buffer<Way>& ways)
-            : m_node_buffer(nodes), m_way_buffer(ways)
+            // If the tolerance is less or equal to zero,
+            // no compression will be applied.
+            if (m_tolerance <= 0)
             {
-                // Prepare node degree lookup list
-                m_degrees = std::vector<size_t>(nodes.size(), 0);
-                for (const Way& way : m_way_buffer)
+                return;
+            }
+
+            // Calculate the degrees for each node in the input buffer. The
+            // resulting map will indicate which nodes should be ignored during
+            // the compression process in order to avoid the creation of holes
+            // between boundaries.
+            std::map<osmium::object_id_type, std::size_t> node_degrees{};
+            for (const osmium::Way& way : buffer.select<osmium::Way>())
+            {
+                for (const osmium::NodeRef& nr : way.nodes())
                 {
-                    for (const NodeRef& node : way)
+                    // Check if node entry exists in the count map
+                    auto it = node_degrees.find(nr.ref());
+                    if (it == node_degrees.end())
                     {
-                        ++m_degrees.at(node.ref());
+                        it = node_degrees.insert(it, { nr.ref(), 0 });
                     }
-                }
-            };
-
-        protected:
-            
-            /**
-             * Compresses a list of points with the Douglas-Peucker-Algorithm.
-             * This method implements the iterative version of the algorithm,
-             * as the recursive method initializes multiple new collections
-             * that will be destroyed by the garbage collector anyway.
-             * 
-             * For more information on the original algorithm, refer to
-             * https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
-             *
-             * @param nodes     The node list
-             * @param tolerance The compression distance tolerance (epsilon)
-             * 
-             * Time complexity: Log-Linear (Average-case), Quadratic (Worst-case)
-             */
-            inline void douglas_peucker(
-                const std::vector<Node>& nodes,
-                double tolerance
-            ) {
-                // Create the index stack for the iterative version
-                // of the algorithm
-                std::stack<std::pair<int, int>> stack;
-                stack.push(std::make_pair(0, nodes.size() - 1));
-
-                while (!stack.empty())
-                {
-                    // Get the current start and end index
-                    auto [start, end] = stack.top();
-                    stack.pop();
-
-                    // Find the node with the greatest perpendicular distance to
-                    // the line between the current start and end node
-                    int index = start;
-                    double d_max = 0.0;
-                    for (int i = start + 1; i < end; i++)
-                    {
-                        // Check if node was removed already in another
-                        // iteration
-                        if (!m_removed_nodes.at(nodes.at(i).id()))
-                        {
-                            double d = functions::perpendicular_distance(
-                                nodes.at(i).point(),
-                                nodes.at(start).point(), 
-                                nodes.at(end).point()
-                            );
-                            if (d > d_max)
-                            {
-                                index = i;
-                                d_max = d;
-                            }
-                        }
-                    }
-
-                    // Check if the maximum distance is greater than the upper tolerance
-                    if (d_max > tolerance)
-                    {
-                        // Compress the left and right part of the polyline
-                        stack.push(std::make_pair(start, index));
-                        stack.push(std::make_pair(index, end));
-                    }
-                    else
-                    {
-                        // Remove all nodes from the current polyline that are between the
-                        // start and end node, except nodes with degree > 2
-                        for (int i = start + 1; i < end; i++) {
-                            if (m_degrees.at(nodes.at(i).id()) < 3)
-                            {
-                                m_removed_nodes.at(nodes.at(i).id()) = true;
-                            }
-                        }
-                    }
+                    it->second += 1;
                 }
             }
 
-        public:
-
-            /**
-             * Run the compressor on the way and node buffers.
-             * Nodes and ways that were removed by the compression will be
-             * removed in the respective buffers.
-             * 
-             * For more information on finding a good tolerance value, refer
-             * to https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
-             * 
-             * @param tolerance The distance epsilon for the Douglas-Peucker-Algorithm.
-             * 
-             * Time complexity: 
-             */
-            void compress_ways(double tolerance)
+            // Ignore nodes that have more than two neighbors.
+            std::set<osmium::object_id_type> ignored_nodes;
+            for (const auto& [id, degree] : node_degrees)
             {
-                // If the tolerance is less or equal to zero,
-                // no compression will be applied.
-                if (tolerance <= 0)
+                if (degree > 2)
                 {
-                    return;
+                    ignored_nodes.insert(id);
                 }
-
-                // Compress the ways according to the Douglas-Peucker-Algorithm
-                m_removed_nodes = std::vector<bool>(m_node_buffer.size());
-                for (const Way& way : m_way_buffer)
-                {
-                    // Retrieve the referenced way nodes from the buffer
-                    std::vector<Node> nodes;
-                    for (const NodeRef& node : way)
-                    {
-                        // Filter nodes that were removed already to avoid
-                        // multiple compression iterations for the same line
-                        // segements 
-                        if (!m_removed_nodes.at(node.ref()))
-                        {
-                            nodes.push_back(m_node_buffer.at(node.ref()));
-                        }
-                    }
-                    douglas_peucker(nodes, tolerance);
-                }
-                
-                // Prepare the result buffers that contain the compressed,
-                // reindexed nodes
-                Buffer<Node> compressed_nodes;
-                Buffer<Way> compressed_ways;
-
-                // Prepare the index map that maps the current node indices to
-                // compressed node indices
-                id_map_type n_ids;
-
-                // Create the new node buffer by adding all nodes from the old
-                // buffer that have not been marked as removed
-                for (const Node& node : m_node_buffer)
-                {
-                    if (!m_removed_nodes.at(node.id()))
-                    {
-                        object_id_type mapped_id = n_ids.size();
-                        n_ids[node.id()] = mapped_id;
-                        compressed_nodes.push_back(Node{ mapped_id, node.point() });
-                    }
-                }
-
-                // Create the new way buffer by re-creating the ways with the nodes
-                // that have not been marked as removed
-                for (const Way& way : m_way_buffer)
-                {
-                    Way compressed_way{ way.id() };
-                    for (const NodeRef& node : way)
-                    {
-                        if (!m_removed_nodes.at(node.ref()))
-                        {
-    
-                            compressed_way.push_back(n_ids.at(node.ref()));
-                        }
-                    }
-                    compressed_ways.push_back(compressed_way);
-                }
-                
-                // Swap the old buffer and graph references with the result
-                // buffers and graph
-                std::swap(m_node_buffer, compressed_nodes);
-                std::swap(m_way_buffer, compressed_ways);
             }
 
-        };
+            // The index storing all node locations.
+            index_type index;
 
-    }
+            // The handler that stores all node locations in the index and adds them
+            // to the ways.
+            osmium::handler::NodeLocationsForWays<index_type> location_handler{ index };
+            location_handler.ignore_errors();
+
+            // Compress the ways in the buffer using the Douglas-Peucker
+            // algorithm and retrieve the set of removed node ids.
+            handler::CompressionHandler compression_handler{ m_tolerance, ignored_nodes };
+            osmium::apply(buffer, location_handler, compression_handler);
+            std::set<osmium::object_id_type> removed_nodes = compression_handler.removed_nodes();
+
+            // Create a new buffer by copying the objects from the old buffer
+            // while ignoring nodes that were marked as removed by the
+            // compression handler.
+            osmium::memory::Buffer result{ 1024, osmium::memory::Buffer::auto_grow::yes };
+            for (const auto& object : buffer.select<osmium::OSMObject>())
+            {
+                switch (object.type())
+                {
+                case osmium::item_type::node:
+                    // Copy the node if it was not marked as removed
+                    if (!removed_nodes.count(object.id()))
+                    {
+                        result.add_item(object);
+                        result.commit();
+                    }
+                    break;
+                case osmium::item_type::way:
+                    {
+                        // Copy the way and rebuild the node reference list
+                        // while ignoring the removed node references.
+                        osmium::builder::WayBuilder way_builder{ result };
+
+                        // Copy the way attributes and tags
+                        way_builder.set_id(object.id())
+                            .set_version(object.version())
+                            .set_changeset(object.changeset())
+                            .set_timestamp(object.timestamp())
+                            .set_uid(object.uid())
+                            .set_user(object.user())
+                            .add_item(object.tags());
+
+                        // Copy the node references and filter the compressed nodes
+                        {
+                            const osmium::Way& way = static_cast<const osmium::Way&>(object);
+                            osmium::builder::WayNodeListBuilder way_nodes_builder{ way_builder };
+                            for (const osmium::NodeRef& nr : way.nodes())
+                            {
+                                if (!removed_nodes.count(nr.ref()))
+                                {
+                                    way_nodes_builder.add_node_ref(nr.ref());
+                                }
+                            }
+                        }
+                    }
+                    result.commit();
+                    break;
+                default:
+                    result.add_item(object);
+                    result.commit();
+                }
+            }
+
+            // Swap the old buffer with the resulting compressed buffer
+            std::swap(buffer, result);
+        }
+
+    };
 
 }

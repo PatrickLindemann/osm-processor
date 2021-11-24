@@ -1,224 +1,201 @@
 #pragma once
 
-#include <algorithm>
-#include <vector>
-#include <unordered_map>
-
-#include "functions/envelope.hpp"
-#include "model/geometry/multipolygon.hpp"
-#include "model/geometry/polygon.hpp"
-#include "model/geometry/rectangle.hpp"
-#include "model/graph/undirected_graph.hpp"
-#include "model/map/map.hpp"
-#include "model/map/bonus.hpp"
-#include "model/map/territory.hpp"
-#include "model/memory/area.hpp"
-#include "model/memory/buffer.hpp"
-#include "model/type.hpp"
-#include "util/color.hpp"
+using namespace model;
 
 namespace mapmaker
 {
 
-    namespace builder
+    template <typename T>
+    class MapBuilder
     {
 
-        using namespace model;
+        /* Members */
 
-        /**
-         * A builder that creates a map with territories and
-         * boundaries from an area buffer.
-         */
-        class MapBuilder
+        std::string m_name = "";
+
+        std::size_t m_width  = 0;
+        std::size_t m_height = 0;
+
+        level_type m_territory_level   = 0;
+        level_type m_bonus_level       = 0;
+        level_type m_super_bonus_level = 0;
+
+        graph::UndirectedGraph m_neighbors = {};
+
+        std::map<object_id_type, std::set<object_id_type>> m_hierarchy = {};
+
+        std::map<object_id_type, object_id_type> m_ids = {};
+
+    public:
+
+        /* Constructors */
+
+        MapBuilder() {}
+
+        /* Setters */
+
+        void name(std::string name)
         {
+            m_name = name;
+        }
 
-            /* Members */
-           
-            const memory::Buffer<memory::Node>& m_node_buffer;
-            const memory::Buffer<memory::Area>& m_area_buffer;
-            const graph::UndirectedGraph& m_neighbor_graph;
+        void width(std::size_t width)
+        {
+            m_width = width;
+        }
 
-        public:
+        void height(std::size_t height)
+        {
+            m_height = height;
+        }
 
-            /* Constructors */
+        void territory_level(level_type level)
+        {
+            m_territory_level = level;
+        }
 
-            MapBuilder(
-                const memory::Buffer<memory::Node>& nodes,
-                const memory::Buffer<memory::Area>& areas,
-                const graph::UndirectedGraph& neighbors
-            ) : m_node_buffer(nodes), m_area_buffer(areas), m_neighbor_graph(neighbors) {}
+        void bonus_level(level_type level)
+        {
+            m_bonus_level = level;
+        }
 
-        protected:
+        void super_bonus_level(level_type level)
+        {
+            m_super_bonus_level = level;
+        }
 
-            /* Helper methods */
+        void neighbors(const graph::UndirectedGraph& neighbors)
+        {
+            m_neighbors = neighbors;
+        }
 
-            /**
-             * Convert a memory ring of node references to a ring geometry
-             * with points.
-             * 
-             * @param ring The memory ring
-             * @returns    The ring geometry
-             * 
-             * Time complexity: Linear
-             */
-            geometry::Ring<double> create_ring(
-                const memory::Ring& ring
-            ) {
-                geometry::Ring<double> geometry;
-                for (const memory::NodeRef& node : ring)
-                {
-                    geometry.push_back(m_node_buffer.at(node).point());
-                }
-                return geometry;
+        void hierarchy(const std::map<object_id_type, std::set<object_id_type>>& hierarchy)
+        {
+            m_hierarchy = hierarchy;
+        }
+
+    protected:
+
+        /* Helper methods */
+
+        warzone::Territory<T> territory(const Boundary<T>& boundary)
+        {
+            // Create the territory
+            warzone::Territory<T> territory{
+                m_ids.at(boundary.id),
+                boundary.name,
+                boundary.geometry,
+                boundary.center
+            };
+            // Add the neighbors
+            for (const object_id_type& neighbor : m_neighbors.adjacents(boundary.id))
+            {
+                territory.neighbors.push_back(m_ids.at(neighbor));
+            }
+            return territory;
+        }
+
+        warzone::Bonus<T> bonus(const Boundary<T>& boundary)
+        {
+            // Create the bonus
+            warzone::Bonus<T> bonus{
+                m_ids.at(boundary.id),
+                boundary.name,
+                boundary.geometry,
+                boundary.center
+            };
+            // Add the children
+            for (const object_id_type& child : m_hierarchy.at(boundary.id))
+            {
+                bonus.children.push_back(m_ids.at(child));
+            }
+            return bonus;
+        }
+
+        warzone::SuperBonus<T> super_bonus(const Boundary<T>& boundary)
+        {
+            // Create the super bonus
+            warzone::SuperBonus<T> super_bonus{
+                m_ids.at(boundary.id),
+                boundary.name,
+                boundary.geometry,
+                boundary.center
+            };
+            // Add the children
+            for (const object_id_type& child : m_hierarchy.at(boundary.id))
+            {
+                super_bonus.children.push_back(m_ids.at(child));
+            }
+            return super_bonus;
+        }
+
+    public:
+
+        /* Methods */
+
+        warzone::Map<T> run(const std::map<object_id_type, Boundary<T>>& boundaries)
+        {
+            // Create the total set of levels
+            std::set<level_type> levels{ m_territory_level };
+            if (m_bonus_level > 0)
+            {
+                levels.insert(m_bonus_level);
+            }
+            if (m_super_bonus_level > 0)
+            {
+                levels.insert(m_super_bonus_level);
             }
 
-            /**
-             * Convert an outer and N inner memory rings of node references
-             * to a polygon geometry with points.
-             * 
-             * @param outer  The outer memory ring
-             * @param inners The inner memory rings
-             * @returns      The polygon geometry
-             * 
-             * Time complexity: Linear
-             */
-            geometry::Polygon<double> create_polygon(
-                const memory::Ring& outer,
-                const std::vector<memory::Ring>& inners
-            ) {
-                geometry::Polygon<double> geometry{ create_ring(outer) };
-                for (const memory::Ring& inner : inners)
+            // Create the map instance
+            warzone::Map<T> map{
+                m_name,
+                m_width,
+                m_height,
+                levels
+            };
+
+            // Fill the id map, which maps the boundary ids to territory, bonus
+            // and super bonus ids.
+            object_id_type t = 1;
+            object_id_type b = 1;
+            object_id_type s = 1;
+            for (const auto& [id, boundary] : boundaries)
+            {
+                if (boundary.level == m_territory_level)
                 {
-                    geometry.inners().push_back(create_ring(inner));
+                    m_ids[id] = t++;
                 }
-                return geometry;
+                else if (boundary.level == m_bonus_level)
+                {
+                    m_ids[id] = b++;
+                }
+                else if (boundary.level == m_super_bonus_level)
+                {
+                    m_ids[id] = s++;
+                }
             }
 
-            /**
-             * Convert a complex area with node references to a multipolygon
-             * geometry with points.
-             * 
-             * @param area The memory area
-             * @returns    The multipolygon geometry
-             * 
-             * Time complexity: Linear
-             */
-            geometry::MultiPolygon<double> create_multipolygon(
-                const memory::Area& area
-            ) {
-                geometry::MultiPolygon<double> geometry{};
-                for (const memory::Ring& outer : area.outer_rings())
+            // Create the territories, bonuses and super bonuses depending on
+            // the boundary level
+            for (const auto& [id, boundary] : boundaries)
+            {
+                if (boundary.level == m_territory_level)
                 {
-                    // Create a polygon for each outer ring
-                    geometry::Polygon<double> polygon { create_ring(outer) };
-                    for (const memory::Ring& inner : area.inner_rings(outer))
-                    {
-                        polygon.inners().push_back(create_ring(inner));
-                    }
-                    // Add polygon to multipolygon
-                    geometry.polygons().push_back(polygon);
+                    map.territories.push_back(territory(boundary));
                 }
-                return geometry;
+                else if (boundary.level == m_bonus_level)
+                {
+                    map.bonuses.push_back(bonus(boundary));
+                }
+                else if (boundary.level == m_super_bonus_level)
+                {
+                    map.super_bonuses.push_back(super_bonus(boundary));
+                }
             }
 
-        public:
-            
-            /* Methods */
+            return map;
+        }
 
-            /**
-             * 
-             */
-            map::Map build_map(
-                std::string name,
-                int width,
-                int height,
-                level_type territory_level,
-                std::vector<level_type> bonus_levels
-            ) {
-                // Create the map with the specified width and height
-                map::Map map;
-                map.name() = name;
-                map.width() = width;
-                map.height() = height;
-                map.levels() = bonus_levels;
-                map.levels().push_back(territory_level);
-
-                //
-                std::unordered_map<object_id_type, object_id_type> id_map;
-
-                // Convert the areas from the area buffer
-                for (const memory::Area& area : m_area_buffer)
-                {
-                    if (area.level() == territory_level)
-                    {
-                        // Area is a territory area
-                        assert(area.outer_rings().size() == 1);
-
-                        // Retrieve outer and inner rings from the area
-                        const memory::Ring& outer = area.outer_rings().at(0);
-                        const std::vector<memory::Ring>& inners = area.inner_rings(outer);
-
-                        // Map the current area id to a territory id
-                        object_id_type territory_id = map.territories().size();
-                        id_map[area.id()] = territory_id;
-
-                        // Create the territory and convert the geometry
-                        map::Territory territory(territory_id);
-                        territory.name() = area.name();
-                        territory.geometry() = create_polygon(outer, inners);
-                        territory.bounds() = functions::envelope(territory.geometry());
-
-                        // Save the territoy neighbors
-                        const std::vector<object_id_type> neighbors = m_neighbor_graph.adjacents(area.id());
-                        for (const object_id_type neighbor : neighbors)
-                        {
-                            territory.neighbors().push_back({ neighbor });
-                        }
-
-                        // Add the territory to the map
-                        map.territories().push_back(territory);
-                    }
-                    else if (area.level() == bonus_levels.at(0))
-                    {
-                        // Area is a regular bonus area
-                        assert(area.outer_rings().size() >= 1);
-
-                        // Map the current area id to a bonus id
-                        object_id_type bonus_id = map.bonuses().size();
-                        id_map[area.id()] = bonus_id;
-
-                        // Create the bonus and convert the geometry
-                        map::Bonus bonus( map.bonuses().size() );
-                        bonus.name() = area.name();
-                        bonus.geometry() = create_multipolygon(area);
-                        bonus.bounds() = functions::envelope(bonus.geometry());
-                        bonus.color() = "#ffffff";
-
-                        // Add the bonus to the map
-                        map.bonuses().push_back(bonus);
-                    }
-                    else
-                    {
-                        // Area is a super bonus area
-                        assert(area.outer_rings().size() >= 1);
-
-                        // Create the bonus and convert the geometry
-                        map::SuperBonus super_bonus( map.bonuses().size() );
-                        super_bonus.name() = area.name();
-                        super_bonus.geometry() = create_multipolygon(area);
-                        super_bonus.bounds() = functions::envelope(super_bonus.geometry());
-                        super_bonus.color() = "#ffffff";
-
-                        // Add the bonus to the map
-                        map.super_bonuses().push_back(super_bonus);
-                    }
-                }
-
-                return map;
-            } 
-
-        };
-
-    }
+    };
 
 }

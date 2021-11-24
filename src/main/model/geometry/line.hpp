@@ -24,7 +24,7 @@ namespace model
             const bool valid() const
             {
                 return this->size() >= 2;
-            } 
+            }
 
         };
 

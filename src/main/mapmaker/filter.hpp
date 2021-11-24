@@ -1,206 +1,191 @@
 #pragma once
 
-#include <utility>
-#include <vector>
+#include <numeric>
 
-#include "functions/area.hpp"
-#include "model/geometry/rectangle.hpp"
-#include "model/graph/edge.hpp"
+#include <osmium/osm/node.hpp>
+#include <osmium/osm/area.hpp>
+
 #include "model/graph/undirected_graph.hpp"
-#include "model/memory/area.hpp"
-#include "model/memory/buffer.hpp"
-#include "model/memory/entity.hpp"
-#include "model/memory/node.hpp"
-#include "model/memory/relation.hpp"
-#include "model/memory/way.hpp"
-#include "model/type.hpp"
+
+#include "handler/calculation_handler.hpp"
+#include "handler/filter_handler.hpp"
 
 using namespace model;
 
 namespace mapmaker
 {
-
-    namespace filter
-    {
         
-        /**
-         * A filter that removes areas based on their surface area.
-         */
-        class AreaFilter
-        {
-        public:
+    /**
+     * A filter that removes areas based on their surface area.
+     */
+    class AreaFilter
+    {
+    protected:
 
-            /* Types */
+        /* Members */
 
-            using component_map_type = std::unordered_map<component_type, std::vector<object_id_type>>;
-            using id_map_type  = std::unordered_map<object_id_type, object_id_type>;
-
-        protected:
-
-            /* Members */
-
-            memory::Buffer<memory::Area>& m_area_buffer;
-            memory::Buffer<memory::Relation>& m_relation_buffer;
-            graph::UndirectedGraph& m_neighbors;
-            component_map_type& m_components;
-            const memory::Buffer<memory::Node>& m_node_buffer;
-            const memory::Buffer<memory::Way>& m_way_buffer;
+        double m_tolerance;
             
-        public:
+    public:
 
-            /* Constructors */
+        /* Constructors */
 
-            AreaFilter(
-                memory::Buffer<memory::Area>& areas,
-                memory::Buffer<memory::Relation>& relations,
-                graph::UndirectedGraph& neighbors,
-                component_map_type& components,
-                const memory::Buffer<memory::Node>& nodes,
-                const memory::Buffer<memory::Way>& ways
-            ) : m_area_buffer(areas), m_relation_buffer(relations), m_neighbors(neighbors),
-                m_components(components), m_node_buffer(nodes), m_way_buffer(ways) {};
+        AreaFilter(double tolerance) : m_tolerance(tolerance) {}
                 
-            /* Methods */
+        /* Methods */
 
-            /**
-             * Apply the filter on the specified area buffer.
-             * Areas that have a smaller surface area relative to the
-             * total surface area than the specified threshold will be
-             * removed.
-             * 
-             * @param threshold The relative surface area threshold
-             * 
-             * Time complexity: Linear
-             */
-            void filter_areas(double threshold)
+        /**
+         * Apply the filter on the specified area buffer.
+         * Areas that have a smaller surface area relative to the
+         * total surface area than the specified threshold will be
+         * removed.
+         *
+         *
+         * Time complexity: Linear
+         */
+        void run(
+            osmium::memory::Buffer& buffer,
+            graph::UndirectedGraph& neighbors,
+            std::vector<std::set<osmium::object_id_type>>& components
+        ){
+            // Calculate the surface areas of each area in the buffer.
+            handler::SurfaceAreaHandler surface_handler{};
+            osmium::apply(buffer, surface_handler);
+            std::map<osmium::object_id_type, double> area_surfaces = surface_handler.surfaces();
+            double total_surface = surface_handler.total();
+
+            // Filter components by checking if their relative surface area is
+            // less than the specified threshold
+            std::set<osmium::object_id_type> removed_areas{};
+            for (std::size_t i = 0; i < components.size();)
             {
-
-                std::vector<bool> removed_areas(m_area_buffer.size());
-                std::vector<bool> removed_ways(m_way_buffer.size());
-
-                // Pre-calculate the surface areas for areas with the
-                // specified level and compute the total surface area
-                double total_surface_area = 0.0;
-                std::unordered_map<object_id_type, double> surface_areas;
-                for (const memory::Area& area : m_area_buffer)
+                // Calculate the component surface area
+                double component_surface = 0;
+                for (const osmium::object_id_type& id : components.at(i))
                 {
-                    // Convert the outer ring of the area
-                    // Note: Areas of the specified level must have
-                    // exactly one outer ring.
-                    geometry::Ring<double> outer;
-                    for (const memory::NodeRef& nr : area.outer_rings().at(0))
-                    {
-                        const memory::Node& node = m_node_buffer.at(nr);
-                        outer.push_back(node.point());
-                    }
-                    double surface_area = functions::area(outer);
-                    surface_areas[area.id()] = surface_area;
-                    total_surface_area += surface_area;
+                    component_surface += area_surfaces.at(id);
                 }
 
-                // Filter components by their surface area
-                for (auto it = m_components.cbegin(); it != m_components.cend();)
+                double relative_surface = component_surface / total_surface;
+                if (relative_surface < m_tolerance)
                 {
-                    // Get the component surface area
-                    double component_surface_area = 0.0;
-                    for (const object_id_type ar : it->second)
+                    // Mark all areas in the component for removal
+                    for (const osmium::object_id_type& id : components.at(i))
                     {
-                        component_surface_area += surface_areas.at(ar);
+                        removed_areas.insert(id);
                     }
-                    // Check if the relative component area to total area
-                    // ratio is lower than the specified threshold
-                    double relative_surface_area = component_surface_area / total_surface_area;
-                    if (relative_surface_area < threshold)
-                    {
-                        // Mark all areas and their way references in that component
-                        // for removal
-                        for (const object_id_type ar : it->second)
-                        {
-                            const memory::Area& area = m_area_buffer.at(ar);
-                            for (const memory::WayRef& wr : area.ways())
-                            {
-                                removed_ways.at(wr.ref()) = true;
-                            }
-                            removed_areas.at(ar) = true;
-                        }
-                        // Remove component from the component map
-                        m_components.erase(it++);
-                    }
-                    else
-                    {
-                        ++it;
-                    }
+                    components.erase(components.begin() + i);
                 }
-
-                // Removed marked ways from the relation buffer
-                for (memory::Relation& relation : m_relation_buffer)
+                else
                 {
-                    for (auto it = relation.members().begin(); it != relation.members().end(); it++)
-                    {
-                        if (removed_ways.at(it->ref()))
-                        {
-                            relation.members().erase(it--);
-                        }
-                    }
+                    i++;
                 }
-
-                // Remove marked areas from the buffer and perform
-                // an area reindex (on the buffer and graph)
-                id_map_type a_ids;
-                memory::Buffer<memory::Area> new_area_buffer;
-                graph::UndirectedGraph new_neighbors;
-                for (const memory::Area& area : m_area_buffer)
-                {
-                    if (!removed_areas.at(area.id()))
-                    {
-                        object_id_type mapped_id = a_ids.size();
-                        a_ids[area.id()] = mapped_id;
-                        // Create the area copy with the mapped id
-                        memory::Area new_area{
-                            mapped_id,
-                            area.name(),
-                            area.level(),
-                            area.original_id()
-                        };
-                        // Copy the area rings
-                        for (const memory::Ring& outer : area.outer_rings())
-                        {
-                            new_area.add_outer(outer);
-                            for (const memory::Ring& inner : area.inner_rings(outer))
-                            {
-                                new_area.add_inner(outer, inner);
-                            }
-                        }
-                        // Copy the area way references that were not marked as removed
-                        for (const memory::WayRef& way : area.ways())
-                        {
-                            if (!removed_ways.at(way.ref()))
-                            {
-                                new_area.add_way(way);
-                            }
-                        }
-                        new_area_buffer.push_back(new_area);
-                        new_neighbors.insert_vertex(mapped_id);
-                    }
-                }
-                std::swap(m_area_buffer, new_area_buffer);
-
-                // Add the new neighbor edges
-                for (const graph::edge_type& edge : m_neighbors.edges())
-                {
-                    if (!removed_areas.at(edge.first) && !removed_areas.at(edge.second))
-                    {
-                        const graph::vertex_type& v1 = a_ids.at(edge.first);
-                        const graph::vertex_type& v2 = a_ids.at(edge.second);
-                        new_neighbors.vertices().insert(v1);
-                        new_neighbors.edges().insert({ v1, v2 });
-                    }
-                }
-                std::swap(m_neighbors, new_neighbors);
             }
 
-        };
+            // Check if any areas were marked for removal before continuing
+            if (removed_areas.empty())
+            {
+                return;
+            }
+            
+            // Retrieve the node references for the removed areas
+            handler::AreaNodeFilterHandler node_handler{ removed_areas };
+            osmium::apply(buffer, node_handler);
+            std::set<osmium::object_id_type> removed_nodes = node_handler.references();
 
-    }
+            // Retrieve the way references for the removed areas
+            handler::NodeWayFilterHandler way_handler{ removed_nodes };
+            osmium::apply(buffer, way_handler);
+            std::set<osmium::object_id_type> removed_ways = way_handler.references();
+
+            // Remove the marked areas and their associated nodes and ways from
+            // the buffer
+            osmium::memory::Buffer result{ 1024, osmium::memory::Buffer::auto_grow::yes };
+            for (const auto& object : buffer.select<osmium::OSMObject>())
+            {
+                switch (object.type())
+                {
+                case osmium::item_type::node:
+                    if (!removed_nodes.count(object.id()))
+                    {
+                        result.add_item(object);
+                        result.commit();
+                    }
+                    break;
+                case osmium::item_type::way:
+                    if (!removed_ways.count(object.id()))
+                    {
+                        if (!removed_areas.count(osmium::object_id_to_area_id(object.id(), object.type())))
+                        {
+                            result.add_item(object);
+                            result.commit();
+                        }
+                    }
+                    break;
+                case osmium::item_type::relation:
+                    if (!removed_areas.count(osmium::object_id_to_area_id(object.id(), object.type())))
+                    {
+                        {
+                            // Rebuild relation without the removed way members
+                            osmium::builder::RelationBuilder relation_builder{ result };
+
+                            // Copy the way attributes and tags
+                            relation_builder.set_id(object.id())
+                                .set_version(object.version())
+                                .set_changeset(object.changeset())
+                                .set_timestamp(object.timestamp())
+                                .set_uid(object.uid())
+                                .set_user(object.user())
+                                .add_item(object.tags());
+
+                            {
+                                // Copy the relation references and filter the removed ways
+                                const osmium::Relation& relation = static_cast<const osmium::Relation&>(object);
+                                osmium::builder::RelationMemberListBuilder members_builder{ relation_builder };
+                                for (const osmium::RelationMember& member : relation.members())
+                                {
+                                    if (member.type() != osmium::item_type::way || !removed_ways.count(member.ref()))
+                                    {
+                                        members_builder.add_member(member.type(), member.ref(), member.role());
+                                    }
+                                }
+                            }
+                        }
+                        result.commit();
+                    }
+                    break;
+                case osmium::item_type::area:
+                    if (!removed_areas.count(object.id()))
+                    {
+                        result.add_item(object);
+                        result.commit();
+                    }
+                    break;
+                }
+            }
+            std::swap(buffer, result);
+
+            // Remove the marked areas and their neighbors from the neighbor
+            // graph by creating a filtered copy.
+            graph::UndirectedGraph result_neighbors{};
+            for (const graph::vertex_type& vertex : neighbors.vertices())
+            {
+                if (!removed_areas.count(vertex))
+                {
+                    result_neighbors.insert_vertex(vertex);
+                }
+            }
+            for (const graph::edge_type& edge : neighbors.edges())
+            {
+                if (!removed_areas.count(edge.first) && !removed_areas.count(edge.second))
+                {
+                    result_neighbors.insert_edge(edge);
+                }
+            }
+            std::swap(neighbors, result_neighbors);
+
+        }
+
+    };
 
 }

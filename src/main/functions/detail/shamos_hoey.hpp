@@ -1,15 +1,12 @@
 #pragma once
 
-#include <functional>
-#include <iterator>
-#include <queue>
 #include <set>
+#include <vector>
 
 #include "model/geometry/point.hpp"
 #include "model/geometry/segment.hpp"
-#include "model/type.hpp"
 
-using namespace model;
+using namespace model::geometry;
 
 namespace functions
 {
@@ -17,55 +14,90 @@ namespace functions
     namespace detail
     {
 
+        /* Functions */
+
         /**
-         * 
+         * Returns the distance of specified point p to a segment s, defined
+         * by the two points s1 and s2.
+         *
+         * @param p  The point
+         * @param s1 The first point of the segment
+         * @param s2 The second point of the segment
+         * @returns  The distance of the point to the segment
+         *           If the distance is > 0, the point is left of the segment
+         *           If the distance is < 0, the point is right of the segment
+         *           If the distance is = 0, the point is on the segment
          */
         template <typename T>
-        bool compare_lt(const geometry::Point<T>& p1, const geometry::Point<T>& p2)
+        double distance(const Point<T>& p, const Point<T>& s1, const Point<T>& s2)
         {
-            // Test the x coordinate first
-            if (p1.x() < p2.x()) return true;
-            if (p1.x() > p2.x()) return false;
-            // Test the y coordinate
-            if (p1.y() < p2.y()) return true;
-            if (p1.y() > p2.y()) return false;
+            return (s1.x() - p.x()) * (s2.y() - p.y()) - (s2.x() - p.x()) * (s1.x() - p.y());
+        }
+
+        /**
+         * Returns the distance of specified point p to a segment s.
+         *
+         * @param p  The point
+         * @param s The first point of the segment
+         * @returns  The distance of the point to the segment
+         *           If the distance is > 0, the point is left of the segment
+         *           If the distance is < 0, the point is right of the segment
+         *           If the distance is = 0, the point is on the segment
+         */
+        template <typename T>
+        double distance(const Point<T>& p, const Segment<T>& s)
+        {
+            return distance(p, s.first(), s.last());
+        }
+
+        /* Comparison Functions */
+
+       /**
+        * Checks if a point p is less than another point q by comparing their xy-order.
+        *
+        * @param   p The first point
+        * @param   q The second point
+        * @returns True if p has a strictly lower xy-order than q.
+        */
+        template <typename T>
+        bool compare_lt(const Point<T>& p, const Point<T>& q)
+        {
+            // Compare the x coordinate first
+            if (p.x() < q.x()) return true;
+            if (p.x() > q.x()) return false;
+            // Compare the y coordinate
+            if (p.y() < q.y()) return true;
+            // if (p.y() < q.y()) return false;
             // Points are the same
             return false;
         }
 
         /**
-         * 
+         * Checks if a point p is greater than another point q by comparing their xy-order.
+         *
+         * @param   p The first point
+         * @param   q The second point
+         * @returns True if p has a strictly greater xy-order than q.
          */
         template <typename T>
-        bool compare_gt(const geometry::Point<T>& p1, const geometry::Point<T>& p2)
+        bool compare_gt(const Point<T>& p, const Point<T>& q)
         {
-            // Test the x coordinate first
-            if (p1.x() > p2.x()) return true;
-            if (p1.x() < p2.x()) return false;
-            // Test the y coordinate
-            if (p1.y() > p2.y()) return true;
-            // if (p1.y() < p2.y()) return false;
+            // Compare the x coordinate first
+            if (p.x() > q.x()) return true;
+            if (p.x() < q.x()) return false;
+            // Compare the y coordinate
+            if (p.y() > q.y()) return true;
+            // if (p.y() < q.y()) return false;
             // Points are the same
             return false;
-        }
-
-        /**
-         * 
-         */
-        template <typename T>
-        float is_left(
-            const geometry::Point<T>& p1,
-            const geometry::Point<T>& p2,
-            const geometry::Point<T>& p3
-        ) {
-            return (p2.x() - p1.x()) * (p3.y() - p1.y()) - (p3.x() - p1.x()) * (p2.x() - p1.y());
         }
 
         /* Events */
 
-        /**
-         * 
-         */
+       /**
+        * The event type. An event can either reference the left or right point of
+        * a segment.
+        */
         enum Type
         {
             LEFT,
@@ -73,47 +105,62 @@ namespace functions
         };
 
         /**
-         * 
+         * A struct that contains a point and its associated segment index and its
+         * type (left or right).
          */
         template <typename T>
         struct Event
         {
-            size_t edge;
-            geometry::Point<T> point;
+            std::size_t edge;
+            Point<T> point;
             Type type;
         };
 
+        /**
+         * The event comparator that is used to order events within STL containers.
+         * It compares events by the xy-order of their points.
+         */
         template <typename T>
-        class EventGreaterComparator
+        class EventComparator
         {
         public:
 
             bool operator() (const Event<T>& e1, const Event<T>& e2) const
             {
+                // Use the greater-than comparator because the priority queue is
+                // ordered by highest priority first
                 return compare_gt(e1.point, e2.point);
             }
 
         };
 
         /**
-         * 
+         * The event queue is a priority queue that stores events with their points
+         * ordered by their xy-coordinates.
          */
         template <typename T>
-        class EventQueue : public std::priority_queue<Event<T>, std::vector<Event<T>>, EventGreaterComparator<T>>
-        {  
+        class EventQueue : public std::priority_queue<Event<T>, std::vector<Event<T>>, EventComparator<T>>
+        {
         public:
 
             /* Constructors */
-            
-            EventQueue(std::vector<geometry::Segment<T>>& segments)
+
+           /**
+            * Create an EventQueue for an (unordered) list of segments. This will
+            * automatically create and order the events for each point of the
+            * segments.
+            *
+            * @param
+            */
+            EventQueue(std::vector<Segment<T>>& segments)
             {
                 // Convert segments to events and add them to the internal queue                
-                for (size_t i = 0; i < segments.size(); i++)
+                for (std::size_t i = 0; i < segments.size(); i++)
                 {
                     // Retrieve the current segment and its points
-                    geometry::Segment<T>& segment = segments.at(i);
-                    geometry::Point<T>& p1 = segment.first();
-                    geometry::Point<T>& p2 = segment.last();
+                    Segment<T>& segment = segments.at(i);
+                    Point<T>& p1 = segment.first();
+                    Point<T>& p2 = segment.last();
                     // Create the events for each point
                     Event<T> e1{ i, p1 };
                     Event<T> e2{ i, p2 };
@@ -136,301 +183,196 @@ namespace functions
 
         };
 
-        /* Sweepline */
+        /* Sweep Line */
 
-        /**
-         * 
-         */
         template <typename T>
         struct SLSegment
         {
-            size_t edge;
-            geometry::Point<T> left;
-            geometry::Point<T> right;
-            SLSegment<T>* above = nullptr;
-            SLSegment<T>* below = nullptr;
+            std::size_t edge;
+            Point<T> left;
+            Point<T> right;
         };
 
         /**
-         * 
+         *
+         */
+        bool intersect(const SLSegment<T>& s1, const SLSegment<T>& s2)
+        {
+            // Test for existence of an intersection point
+            float l_sign = distance(s1.left, s1.right, s2.left);
+            float r_sign = distance(s1.left, s1.right, s2.right);
+            if (l_sign * r_sign > 0)
+            {
+                // Endpoints of s1 have the same sign relative
+                // to s2
+                return false;
+            }
+            l_sign = distance(s2.left, s2.right, s1.left);
+            r_sign = distance(s2.left, s2.right, s1.right);
+            if (l_sign * r_sign > 0)
+            {
+                // Endpoints of s2 have the same sign relative
+                // to s1
+                return false;
+            }
+
+            // Found intersection
+            return true;
+        }
+
+        /**
+         * The event comparator that is used to order events within STL containers.
+         * It compares events by the xy-order of their points.
          */
         template <typename T>
-        class SLSegmentLessComparator
+        class SLSegmentComparator
         {
         public:
 
             bool operator() (const SLSegment<T>& s1, const SLSegment<T>& s2) const
             {
-                return s1.edge < s2.edge;
+                // Compare the left points first
+                if (compare_lt(s1.left, s2.left)) return true;
+                if (compare_gt(s1.left, s2.left)) return false;
+                // Left points are the same, compare the right points
+                if (compare_lt(s1.right, s2.right)) return true;
+                // if (compare_gt(s1.right, s2.right)) return false;
+                // Segments are the same
+                return false;
             }
+
         };
 
-        /**
-         * 
-         */
         template <typename T>
         class SweepLine
         {
+        public:
 
             /* Types */
 
-            /**
-             * 
-             */
-            using tree_type = std::set<SLSegment<T>, SLSegmentLessComparator<T>>;
+            using tree_type = std::set<SLSegment<T>, SLSegmentComparator<T>>
+                using const_iterator = typename tree_type::const_iterator;
 
-            /**
-             * 
-             */
-            using iterator_type       = typename tree_type::iterator;
-            using const_iterator_type = typename tree_type::const_iterator;
+        protected:
 
             /* Members */
 
-            /**
-             * 
-             */
-            const std::vector<geometry::Segment<T>>& m_segments;
-            
-            /**
-             * 
-             */
+            std::map<std::size_t, Segment<T>> m_segments;
+
             tree_type m_tree;
 
         public:
 
             /* Constructors */
 
-            SweepLine<T>(std::vector<geometry::Segment<T>>& segments)
-            : m_segments(segments) {};
+            SweepLine() {}
+            SweepLine(std::size_t size) { m_segments.reserve(size) }
 
         protected:
 
+            /* Helper Methods */
 
-            /**
-             * Update the above pointer for an SLSegment in the tree at a
-             * specified iterator position with a new pointer.
-             * This is needed because set iterators are const, which means that
-             * referenced values can not be manipulated directly
-             * 
-             * @param it    The iterator of the SLSegment
-             * @param above The new above pointer
-             *
-             * Time complexity: Constant (Amortized), Logarithmic (Worst-Case) 
-             */
-            void update_above(iterator_type it, SLSegment<T>* above)
+            SLSegment<T> convert(std::size_t index, const Segment<T>& segment) const
             {
-                if (it != m_tree.end())
+                if (compare_lt(segment.first(), segment.last())
                 {
-                    // Update the above value
-                    SLSegment<T> s = *it;
-                    s.above = above;
-                    // Erase and re-insert the segment
-                    it = m_tree.erase(it);
-                    m_tree.insert(it, s);
+                    return SLSegment<T>{ index, segment.first(), segment.last()) };
                 }
+                return SLSegment<T>{ index, segment.last(), segment.first()) };
             }
 
-            /**
-             * Update the below pointer for an SLSegment in the tree at a
-             * specified iterator position with a new pointer.
-             * This is needed because set iterators are const, which means that
-             * referenced values can not be manipulated directly
-             * 
-             * @param it    The iterator of the SLSegment
-             * @param below The new below pointer
-             *
-             * Time complexity: Constant (Amortized), Logarithmic (Worst-Case) 
-             */
-            void update_below(iterator_type it, SLSegment<T>* below)
+            SLSegment<T> get(std::size_t index)
             {
-                if (it != m_tree.end())
-                {
-                    // Update the below value
-                    SLSegment<T> s = *it;
-                    s.below = below;
-                    // Erase and re-insert the segment
-                    it = m_tree.erase(it);
-                    m_tree.insert(it, s);
-                }
+                Segment<T> s = m_segments.at(index);
+                return convert(index, s);
             }
-
-        public:
 
             /* Methods */
 
-            /**
-             * 
-             */
-            inline iterator_type add(Event<T>& e)
+            const_iterator insert(std::size_t index, const Segment<T>& segment) const
             {
-                // Fill the SLSegment data
-                SLSegment<T> s{ e.edge };
-
-                // If it is being added, then it must be a LEFT edge event
-                // Determine which of the points is the left one
-                const geometry::Segment<T>& segment = m_segments.at(e.edge); 
-                const geometry::Point<T>& p1 = segment.first();
-                const geometry::Point<T>& p2 = segment.last();
-                if (compare_lt(p1, p2))
-                {
-                    // p1 is left of p2
-                    s.left = p1;
-                    s.right = p2;
-                }
-                else
-                {
-                    // p2 is left of p1
-                    s.left = p2;
-                    s.right = p1;
-                }
-
-                // Add the node to the tree
-                auto [it, inserted] = m_tree.insert(s);
-
-                // Determine the above and below segments
-                if (std::next(it) != m_tree.end())
-                {
-                    iterator_type nx = std::next(it);
-                    update_below(nx, &s);
-                    SLSegment<T> above = *nx;
-                    update_above(it, &above);
-                }
-                if (it != m_tree.begin())
-                {
-                    iterator_type pv = std::prev(it);
-                    update_above(pv, &s);
-                    SLSegment<T> below = *pv;
-                    update_below(it, &below);
-                }
-
-                // Return the inserted segment
-                return it;
+                SLSegment<T> s = convert(index, segment);
+                m_segments[index] = segment;
+                return m_tree.insert(s);
             }
 
-            /**
-             * 
-             */
-            inline iterator_type find(Event<T>& e)
+            const_iterator find(std::size_t index) const
             {
-                // Search the segment and return the result iterator
-                return m_tree.find({ e.edge });
+                SLSegment<T> s = get(index);
+                return m_tree.find(s);
             }
 
-            /**
-             * 
-             */
-            inline void remove(SLSegment<T>& s)
+            const_iterator erase(std::size_t index) const
             {
-                // Find the segment in the tree
-                iterator_type it = m_tree.find(s);
-                if (it == m_tree.end())
-                {
-                    // Segment doesn't exist, no removal can be performed
-                    return;
-                }
-
-                // Update the above and below segments pointing to each other
-                if (std::next(it) != m_tree.end())
-                {
-                    iterator_type nx = std::next(it);
-                    update_below(nx, s.below);
-                }
-                if (it != m_tree.begin())
-                {
-                    iterator_type pv = std::prev(it);
-                    update_above(pv, s.above);
-                }
-
-                // Now, the segment can be safely removed from the tree
-                m_tree.erase(it);
+                SLSegment<T> s = get(index);
+                m_segments.erase(index);
+                return m_tree.erase(s);
             }
 
-            /**
-             * 
-             */
-            inline bool intersect(SLSegment<T>& s1, SLSegment<T>& s2)
-            {
-                // Check if the edges are consecutive in the line
-                const int e1 = s1.edge;
-                const int e2 = s2.edge;
-                if ((e1 + 1) % m_segments.size() == e2 
-                 || (e2 + 1) % m_segments.size() == e1
-                ) {
-                    return false;
-                }
+            /* Derived Methods */
 
-                // Test for existence of an intersection point
-                float l_sign = is_left(s1.left, s1.right, s2.left);
-                float r_sign = is_left(s1.left, s1.right, s2.right);
-                if (l_sign * r_sign > 0)
-                {
-                    // Endpoints of s1 have the same sign relative
-                    // to s2
-                    return false;
-                }
-                l_sign = is_left(s2.left, s2.right, s1.left);
-                r_sign = is_left(s2.left, s2.right, s1.right);
-                if (l_sign * r_sign > 0)
-                {
-                    // Endpoints of s2 have the same sign relative
-                    // to s1
-                    return false;
-                }
+            using tree_type::cbegin;
+            using tree_type::cend;
+            using tree_type::crbegin;
+            using tree_type::crend;
+            using tree_type::empty;
+            using tree_type::size;
 
-                // Found intersection
-                return true;
-            }
         };
 
-        /**
-         * 
-         */
         template <typename T>
-        bool intersects_shamos_hoey(std::vector<geometry::Segment<T>>& segments)
+        bool shamos_hoey(std::vector<Segment<T>>& segments)
         {
-            SweepLine<T> sl{ segments };
-            EventQueue<T> queue{ segments };
-            
-            // Process all events in the sorted event queue
-            // Events are only left or right vertices since
-            // no new events will be added
-            while(!queue.empty())
+            SweepLine sl{ m_segments.size() };
+            EventQueue eq{ segments };
+
+            while (!eq.empty())
             {
-                // Retrieve the next event
-                Event<T> e = queue.top();
-                queue.pop();
-                // Process the event
+                // Retrieve the next event from the queue
+                Event<T> e = eq.top();
+                eq.pop();
                 if (e.type == LEFT)
                 {
-                    // Process a left vertex
-                    SLSegment<T> s = *sl.add(e);
-                    if (s.above != nullptr && sl.intersect(s, *s.above))
+                    // The event is a left point
+                    // Retrieve the index and segment of the event and insert them
+                    // into the sweep line
+                    auto it_s = sl.insert(e.edge, segments.at(e.edge));
+                    // Retrieve the above and below segments
+                    auto it_a = std::prev(it, 1);
+                    auto it_b = std::next(it, 1);
+                    // Check for intersections
+                    if (it_a != sl.cend() && intersect(*it_s, *it_a))
                     {
                         return true;
                     }
-                    else if (s.below != nullptr && sl.intersect(s, *s.below))
+                    else if (it_b != sl.cend() && intersect(*it_s, *it_b))
                     {
                         return true;
                     }
                 }
                 else if (e.type == RIGHT)
                 {
-                    // Process a right vertex
-                    SLSegment<T> s = *sl.find(e);
-                    if (s.above != nullptr && s.below != nullptr)
+                    // The event is a right point
+                    // Retrieve the index of the event and find the segment in the
+                    // sweep line
+                    auto it_s = sl.find(e.edge);
+                    // Retrieve the above and below segments
+                    // Retrieve the above and below segments
+                    auto it_a = std::prev(it, 1);
+                    auto it_b = std::next(it, 1);
+                    if (it_a != sl.cend() && it_b != sl.cend())
                     {
-                        if (sl.intersect(*s.above, *s.below))
+                        if (intersect(*it_a, *it_b))
                         {
                             return true;
                         }
                     }
-                    sl.remove(s);
+                    // No other intersections are possible, remove the segment
+                    // completely from the sweep line
+                    sl.erase(e.edge);
                 }
             }
 
-            // No intersection was found
-            return false;
         }
 
     }

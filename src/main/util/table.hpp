@@ -2,8 +2,7 @@
 
 /**
  * 
- * Partly adopt of https://github.com/friedmud/variadic_table, licensed
- * under
+ * Partly adopted from https://github.com/friedmud/variadic_table
  * 
  * GNU LESSER GENERAL PUBLIC LICENSE
  * Version 2.1, February 1999
@@ -49,8 +48,8 @@ namespace util
 
         std::vector<std::string> m_headers;
         std::vector<data_type> m_rows;
-        std::vector<size_t> m_col_widths;
-        size_t m_total_width;
+        std::vector<std::size_t> m_col_widths;
+        std::size_t m_total_width;
 
     public:
 
@@ -97,12 +96,12 @@ namespace util
             return m_rows.empty();
         }
 
-        const size_t column_count() const
+        const std::size_t column_count() const
         {
             return m_headers.size();
         }
 
-        const size_t row_count() const
+        const std::size_t row_count() const
         {
             return m_rows.size();
         }
@@ -117,7 +116,7 @@ namespace util
     /* Helpers */
 
         template <typename ValueType>
-        size_t length(const ValueType& value) const
+        std::size_t length(const ValueType& value) const
         {
             return boost::lexical_cast<std::string>(value).length();
         }
@@ -126,8 +125,8 @@ namespace util
          * Recursion end
          */
         template <typename TupleType>
-        void size_columns(TupleType&&, std::vector<size_t>& col_widths, std::integral_constant<
-            size_t,
+        void size_columns(TupleType&&, std::vector<std::size_t>& col_widths, std::integral_constant<
+            std::size_t,
             std::tuple_size<typename std::remove_reference<TupleType>::type>::value>
         ) {
             return;
@@ -136,15 +135,15 @@ namespace util
         /**
          * Recursion step
          */
-        template <size_t I, typename TupleType,
+        template <std::size_t I, typename TupleType,
             typename = typename std::enable_if<I != std::tuple_size<typename std::remove_reference<TupleType>::type>::value>::type>
-        void size_columns(TupleType&& tuple, std::vector<size_t>& col_widths, std::integral_constant<size_t, I>)
+        void size_columns(TupleType&& tuple, std::vector<std::size_t>& col_widths, std::integral_constant<std::size_t, I>)
         {
             col_widths.at(I) = std::max(col_widths.at(I), length(std::get<I>(tuple)));
             size_columns(
                 std::forward<TupleType>(tuple),
                 col_widths,
-                std::integral_constant<size_t, I + 1>()
+                std::integral_constant<std::size_t, I + 1>()
             );
         }
 
@@ -152,19 +151,19 @@ namespace util
          * Recursion start
          */
         template <typename TupleType>
-        void size_columns(TupleType&& tuple, std::vector<size_t>& col_widths)
+        void size_columns(TupleType&& tuple, std::vector<std::size_t>& col_widths)
         {
             size_columns(
                 std::forward<TupleType>(tuple),
                 col_widths,
-                std::integral_constant<size_t, 0>()
+                std::integral_constant<std::size_t, 0>()
             );
         }
 
         void resize()
         {
             // Determine the width for each column
-            for (size_t i = 0; i < column_count(); i++)
+            for (std::size_t i = 0; i < column_count(); i++)
             {
                 m_col_widths.push_back(m_headers.at(i).length());
             }
@@ -177,7 +176,7 @@ namespace util
             // Each column gets printed as | content |, so the total
             // width is #cols * (width[col] + 2 * ' ' + 1 * '|') + 1
             m_total_width = 0;
-            for (size_t col_width : m_col_widths)
+            for (std::size_t col_width : m_col_widths)
             {
                 m_total_width += col_width + 3;
             }
@@ -191,7 +190,7 @@ namespace util
          */
         template <typename TupleType, typename StreamType>
         void print_cells(TupleType&&, StreamType&, std::integral_constant<
-            size_t,
+            std::size_t,
             std::tuple_size<typename std::remove_reference<TupleType>::type>::value>
         ) {
             return;
@@ -200,9 +199,9 @@ namespace util
         /**
          * Recursion step
          */
-        template <size_t I, typename TupleType, typename StreamType,
+        template <std::size_t I, typename TupleType, typename StreamType,
             typename = typename std::enable_if<I != std::tuple_size<typename std::remove_reference<TupleType>::type>::value>::type>
-        void print_cells(TupleType&& tuple, StreamType& stream, std::integral_constant<size_t, I>)
+        void print_cells(TupleType&& tuple, StreamType& stream, std::integral_constant<std::size_t, I>)
         {
             // Print current tuple value
             std::string cell = boost::lexical_cast<std::string>(std::get<I>(tuple));
@@ -212,7 +211,7 @@ namespace util
                 << ' '
                 << '|';
             // Print next value
-            print_cells(std::forward<TupleType>(tuple), stream, std::integral_constant<size_t, I + 1>());
+            print_cells(std::forward<TupleType>(tuple), stream, std::integral_constant<std::size_t, I + 1>());
         }
 
         /**
@@ -221,7 +220,7 @@ namespace util
         template <typename TupleType, typename StreamType>
         void print_cells(TupleType&& tuple, StreamType& stream)
         {
-            print_cells(std::forward<TupleType>(tuple), stream, std::integral_constant<size_t, 0>());
+            print_cells(std::forward<TupleType>(tuple), stream, std::integral_constant<std::size_t, 0>());
         }
 
     public:
@@ -239,7 +238,7 @@ namespace util
 
             // Print the headers (left-aligned)
             stream << '|';
-            for (size_t i = 0; i < column_count(); i++)
+            for (std::size_t i = 0; i < column_count(); i++)
             {
                 stream << ' '
                     << m_headers.at(i)

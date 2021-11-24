@@ -1,14 +1,14 @@
 # IDE directories
 .cache
+.vs
 .vscode
 .clangd
 
 # Build and library directories
+out
 build
 build-win
 
 # Configs & Settings
 config.json
-
-# Output directories
-out
+CMakeSettings.json

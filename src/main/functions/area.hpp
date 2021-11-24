@@ -1,15 +1,12 @@
 #pragma once
 
-#include <algorithm>
-#include <cmath>
-
 #include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
-#include "model/geometry/circle.hpp"
+#include "model/geometry/ring.hpp"
 #include "model/geometry/polygon.hpp"
 #include "model/geometry/multipolygon.hpp"
 
-using namespace model;
+using namespace model::geometry;
 
 namespace functions
 {
@@ -23,28 +20,13 @@ namespace functions
      * Time complexity: Constant
      */
     template <typename T>
-    double area(const geometry::Rectangle<T>& rectangle)
+    double area(const Rectangle<T>& rectangle)
     {
         return rectangle.width() * rectangle.height();
     }
 
     /**
-     * Calculate the surface area of a circle.
-     * 
-     * @param circle The circle
-     * @returns      The area of the circle
-     * 
-     * Time complexity: Constant
-     */
-    template <typename T>
-    double area(const geometry::Circle<T>& circle)
-    {
-        return M_PI * std::pow(circle.radius, 2);
-    }
-
-    /**
-     * Calculate the surface area of a ring with consecutive points
-     * in counter-clockwise order.
+     * Calculate the surface area of a ring using the shoelace formula.
      * 
      * For more information and proof of this formula, refer
      * to https://en.wikipedia.org/wiki/Shoelace_formula
@@ -55,23 +37,24 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const geometry::Ring<T>& ring)
+    double area(const Ring<T>& ring)
     {
-        double left_sum = 0.0;
-        double right_sum = 0.0;
+        double l = 0.0;
+        double r = 0.0;
 
-        for (size_t i = 0; i < ring.size() - 1; i++)
+        for (std::size_t i = 0; i < ring.size() - 1; i++)
         {
-            left_sum += ring.at(i).x() * ring.at(i + 1).y();
-            right_sum += ring.at(i + 1).x() * ring.at(i).y();
+            const Point<T>& p1 = ring.at(i);
+            const Point<T>& p2 = ring.at(i + 1);
+            l += p1.x() * p2.y();
+            r += p2.x() * p1.y();
         }
 
-        return 0.5 * std::abs(left_sum - right_sum);
+        return 0.5 * (l - r);
     }
 
     /**
-     * Calculate the surface area of a polygon with rings of 
-     * consecutive points in counter-clockwise order.
+     * Calculate the surface area of a polygon.
      * 
      * @param polygon The polygon
      * @returns       The area of the polygon
@@ -79,15 +62,14 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const geometry::Polygon<T>& polygon)
+    double area(const Polygon<T>& polygon)
     {
-        double outer_area = area(polygon.outer());
-        double inner_area = 0.0;
-        for (const geometry::Ring<T>& inner : polygon.inners())
+        double a = area(polygon.outer());
+        for (const Ring<T>& inner : polygon.inners())
         {
-            inner_area += area(inner);
+            a += area(inner);
         }
-        return std::max(0.0, outer_area - inner_area);
+        return a;
     }
 
     /**
@@ -99,14 +81,14 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const geometry::MultiPolygon<T>& multipolygon)
+    double area(const MultiPolygon<T>& multipolygon)
     {
-        double area_sum = 0.0;
-        for (const geometry::Polygon<T>& polygon : multipolygon.polygons())
+        double a = 0.0;
+        for (const Polygon<T>& polygon : multipolygon.polygons())
         {
-            area_sum += area(polygon);
+            a += area(polygon);
         }
-        return area_sum;
+        return a;
     }
 
 }

@@ -219,27 +219,27 @@ if(Osmium_USE_SPARSEHASH)
 
     list(APPEND OSMIUM_EXTRA_FIND_VARS SPARSEHASH_INCLUDE_DIR)
     if(SPARSEHASH_INCLUDE_DIR)
-        # Find size of sparsetable::size_type. This does not work on older
+        # Find size of sparsetable::std::size_type. This does not work on older
         # CMake versions because they can do this check only in C, not in C++.
         if(NOT CMAKE_VERSION VERSION_LESS 3.0)
            include(CheckTypeSize)
            set(CMAKE_REQUIRED_INCLUDES ${SPARSEHASH_INCLUDE_DIR})
            set(CMAKE_EXTRA_INCLUDE_FILES "google/sparsetable")
-           check_type_size("google::sparsetable<int>::size_type" SPARSETABLE_SIZE_TYPE LANGUAGE CXX)
+           check_type_size("google::sparsetable<int>::std::size_type" SPARSETABLE_SIZE_TYPE LANGUAGE CXX)
            set(CMAKE_EXTRA_INCLUDE_FILES)
            set(CMAKE_REQUIRED_INCLUDES)
         else()
            set(SPARSETABLE_SIZE_TYPE ${CMAKE_SIZEOF_VOID_P})
         endif()
 
-        # Sparsetable::size_type must be at least 8 bytes (64bit), otherwise
+        # Sparsetable::std::size_type must be at least 8 bytes (64bit), otherwise
         # OSM object IDs will not fit.
         if(SPARSETABLE_SIZE_TYPE GREATER 7)
             set(SPARSEHASH_FOUND 1)
             add_definitions(-DOSMIUM_WITH_SPARSEHASH=${SPARSEHASH_FOUND})
             list(APPEND OSMIUM_INCLUDE_DIRS ${SPARSEHASH_INCLUDE_DIR})
         else()
-            message(WARNING "Osmium: Disabled Google SparseHash library on 32bit system (size_type=${SPARSETABLE_SIZE_TYPE}).")
+            message(WARNING "Osmium: Disabled Google SparseHash library on 32bit system (std::size_type=${SPARSETABLE_SIZE_TYPE}).")
         endif()
     else()
         message(WARNING "Osmium: Google SparseHash library is required but not found, please install it or configure the paths.")

@@ -34,7 +34,7 @@ namespace model
              * Returns the size of the graph, which is a pair of the number
              * of vertices and number of edges. 
              */
-            std::pair<size_t, size_t> size() const override
+            std::pair<std::size_t, std::size_t> size() const override
             {
                 return std::make_pair(m_vertices.size(), m_edges.size() / 2);
             }
@@ -62,7 +62,7 @@ namespace model
              * 
              * Time complexity: Constant
              */
-            size_t edge_count() const override
+            std::size_t edge_count() const override
             {
                 return m_edges.size() / 2;
             }
@@ -147,7 +147,7 @@ namespace model
              * 
              * Time complexity: Logarithmic
              */
-            size_t degree(const vertex_type& vertex) const override
+            std::size_t degree(const vertex_type& vertex) const override
             {
                 // Determine the offset of the edges that contain the
                 // vertex as source 
@@ -171,9 +171,9 @@ namespace model
              * 
              * Time complexity: Logarithmic
              */
-            const std::vector<vertex_type> adjacents(const vertex_type& vertex) const override
+            const std::set<vertex_type> adjacents(const vertex_type& vertex) const override
             {
-                std::vector<vertex_type> vertices;
+                std::set<vertex_type> vertices;
                 // Determine the offset of the edges that contain the
                 // vertex as source 
                 edge_const_iterator it_l, it_u;
@@ -182,7 +182,7 @@ namespace model
                 // Add adjacents to result list
                 while (it_l != it_u)
                 {
-                    vertices.push_back(it_l->second);
+                    vertices.insert(it_l->second);
                     it_l++;
                 }
                 return vertices;

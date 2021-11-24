@@ -193,10 +193,10 @@ namespace functions
     template <typename T>
     bool segments_intersect(const std::vector<geometry::Segment<T>>& segments)
     {
-        for (size_t i = 0; i < segments.size() - 1; i++)
+        for (std::size_t i = 0; i < segments.size() - 1; i++)
         {
             const geometry::Segment<T>& s1 = segments.at(i);
-            for (size_t j = i; j < segments.size(); j++)
+            for (std::size_t j = i; j < segments.size(); j++)
             {
                 const geometry::Segment<T>& s2 = segments.at(j);
                 if (segments_intersect(s1, s2))
@@ -228,7 +228,7 @@ namespace functions
         const geometry::Ring<T>& ring
     ) {
         int intersections;
-        for (size_t i = 0; i < ring.size() - 1; i++)
+        for (std::size_t i = 0; i < ring.size() - 1; i++)
         {   
             const geometry::Point<T>& first = ring.at(i);
             const geometry::Point<T>& last = ring.at(i + 1);
@@ -284,7 +284,7 @@ namespace functions
     ) {
         // Convert ring to segment list
         std::vector<geometry::Segment<T>> segments;
-        for (size_t i = 0; i < ring.size() - 1; i++)
+        for (std::size_t i = 0; i < ring.size() - 1; i++)
         {
             segments.push_back({ ring.at(i), ring.at(i + 1) });
         }
@@ -334,10 +334,10 @@ namespace functions
         }
         // Check if there are any intersections between any
         // of the inner and outer segments
-        for (size_t i = 0; i < inner.size() - 1; i++)
+        for (std::size_t i = 0; i < inner.size() - 1; i++)
         {
             const geometry::Segment<T> s1{ inner.at(i), inner.at(i + 1) };
-            for (size_t j = 0; j < outer.size() - 1; j++)
+            for (std::size_t j = 0; j < outer.size() - 1; j++)
             {
                 const geometry::Segment<T> s2{ outer.at(j), outer.at(j + 1) };
                 if (segments_intersect(s1, s2))

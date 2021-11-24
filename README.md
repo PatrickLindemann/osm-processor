@@ -1,4 +1,6 @@
-![](https://github.com/PatrickLindemann/warzone-osm-mapmaker/blob/master/doc/mapmaker.svg?raw=true)
+<p align="center">
+  <img src="https://github.com/PatrickLindemann/warzone-osm-mapmaker/blob/master/doc/mapmaker.svg?raw=true"/>
+</p>
 
 This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted at the [Institute For Formal Methods of Informatics](https://www.fmi.uni-stuttgart.de/) at the [University of Stuttgart](https://www.uni-stuttgart.de/). For more information about the thesis or this project, feel free to contact an [author](#authors).
 
@@ -22,7 +24,7 @@ This tool is part of the Bachelor's Thesis **OSM Risk Maps** which was conducted
 
 ## Map Creation
 
-If you are not familiar with the [OpenStreetMap](https://www.openstreetmap.org/) project or [Warzone](https://www.warzone.com/), we recommend that you find more about them in the [OpenStreetMap Wiki](https://wiki.openstreetmap.org/wiki/Main_Page) or [Warzone Wiki](https://www.warzone.com/wiki/Main_Page), repsectively.
+If you are not familiar with the [OpenStreetMap](https://www.openstreetmap.org/) project or [Warzone](https://www.warzone.com/), we recommend that you find out more about them in the [OpenStreetMap Wiki](https://wiki.openstreetmap.org/wiki/Main_Page) or [Warzone Wiki](https://www.warzone.com/wiki/Main_Page), repsectively.
 
 This tool depends on real OpenStreetMap data in order to generate the playable maps. In detail, *administrative* [boundary areas](https://wiki.openstreetmap.org/wiki/Key:boundary) with specified [admin_levels](https://wiki.openstreetmap.org/wiki/Key:admin_level) are extracted from an input file and put together into a [Warzone Map](https://www.warzone.com/wiki/Map). The meaning of administrative levels differs between countries, a mapping can be found in this [table](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative#10_admin_level_values_for_specific_countries). You can visualize the administrative borders of various countries with tools such as [OSM-Boundaries](https://osm-boundaries.com/Map).
 

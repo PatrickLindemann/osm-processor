@@ -52,7 +52,7 @@ namespace functions
         {
             double area = 0;
             geometry::Point<T> center;
-            for (size_t i = 0, j = polygon.outer().size() - 1; i < polygon.outer().size(); j = i++)
+            for (std::size_t i = 0, j = polygon.outer().size() - 1; i < polygon.outer().size(); j = i++)
             {
                 const geometry::Point<T>& left = polygon.outer().at(i);
                 const geometry::Point<T>& right = polygon.outer().at(j);

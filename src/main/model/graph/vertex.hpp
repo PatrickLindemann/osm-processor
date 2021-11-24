@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/type.hpp"
+#include "model/types.hpp"
 
 namespace model
 {
@@ -9,8 +9,7 @@ namespace model
     {
 
         /**
-         * Vertices are defined by their ids. It is assumed that ids are
-         * successive integers.
+         * Vertices are defined by their ids.
          */
         using vertex_type = object_id_type;
 

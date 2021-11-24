@@ -18,7 +18,7 @@ namespace functions
      * @param degrees The angle in degrees
      */
     template <typename T>
-    inline T radians(T degrees)
+    T radians(T degrees)
     {
         return degrees * HALF_C;
     } 
@@ -29,7 +29,7 @@ namespace functions
      * @param radians The angle in radians
      */
     template <typename T>
-    inline T degrees(T radians)
+    T degrees(T radians)
     {
         return radians * TWO_C;
     }
@@ -44,22 +44,20 @@ namespace functions
      * Time complexity: Constant
      */
     template <typename T>
-    inline double dot(
-        const Point<T>& p,
-        const Point<T>& q
-    ) {
+    double dot(const Point<T>& p, const Point<T>& q)
+    {
         return p.x() * q.x() + p.y() * q.y();
     }
-  
+
     /**
      * Normalizes a value by projecting it to an interval [lower, upper]
-     * 
+     *
      * @param value The value that will be normalized
      * @param lower The lower bound of the target interval
      * @param upper The upper bound of the target interval
      */
     template <typename T>
-    inline T clamp(T value, T lower, T upper)
+    T clamp(T value, T lower, T upper)
     {
         if (value < lower)
         {

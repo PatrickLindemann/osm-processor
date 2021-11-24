@@ -2,11 +2,13 @@
 
 #include <limits>
 
+#include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/geometry/ring.hpp"
 #include "model/geometry/polygon.hpp"
 #include "model/geometry/multipolygon.hpp"
 
-using namespace model;
+using namespace model::geometry;
 
 namespace functions
 {
@@ -16,26 +18,26 @@ namespace functions
      * oriented minimal bounding box that encloses the ring.
      *
      * @param ring    The ring
-     * @return        The ring bounding box
+     * @return        The bounding box of the ring
      * 
      * Time complexity: Linear
      */
     template <typename T>
-    geometry::Rectangle<T> envelope(const geometry::Ring<T>& ring)
+    Rectangle<T> envelope(const Ring<T>& ring)
     {
         std::numeric_limits<T> limits;
         T min_x = limits.max();
         T min_y = limits.max();
         T max_x = -limits.max();
         T max_y = -limits.max();
-        for (const geometry::Point<T>& point : ring)
+        for (const Point<T>& point : ring)
         {
             min_x = std::min(min_x, point.x());
             min_y = std::min(min_y, point.y());
             max_x = std::max(max_x, point.x());
             max_y = std::max(max_y, point.y());
         }
-        return geometry::Rectangle<T>{ min_x, min_y, max_x, max_y };
+        return Rectangle<T>{ min_x, min_y, max_x, max_y };
     }
 
     /**
@@ -44,12 +46,12 @@ namespace functions
      * outer ring of the polygon.
      *
      * @param polygon The polygon
-     * @return        The polygon bounding box
+     * @return        The bounding box of the polygon
      * 
      * Time complexity: Linear
      */
     template <typename T>
-    geometry::Rectangle<T> envelope(const geometry::Polygon<T>& polygon)
+    Rectangle<T> envelope(const Polygon<T>& polygon)
     {
         return envelope(polygon.outer());
     }
@@ -60,21 +62,21 @@ namespace functions
      * all exclaves of the multipolygon.
      *
      * @param multipolygon The multipolygon
-     * @return             The multipolygon bounding box
+     * @return             The bounding box of the multipolygon
      * 
      * Time complexity: Linear
      */
     template <typename T>
-    geometry::Rectangle<T> envelope(const geometry::MultiPolygon<T>& multipolygon)
+    Rectangle<T> envelope(const MultiPolygon<T>& multipolygon)
     {
         std::numeric_limits<T> limits;
         T min_x = limits.max();
         T min_y = limits.max();
         T max_x = -limits.max();
         T max_y = -limits.max();
-        for (const geometry::Polygon<T>& polygon : multipolygon.polygons())
+        for (const Polygon<T>& polygon : multipolygon.polygons())
         {
-            for (const geometry::Point<T>& point : polygon.outer())
+            for (const Point<T>& point : polygon.outer())
             {
                 min_x = std::min(min_x, point.x());
                 min_y = std::min(min_y, point.y());
@@ -82,7 +84,7 @@ namespace functions
                 max_y = std::max(max_y, point.y());
             }
         }
-        return geometry::Rectangle<T>{ min_x, min_y, max_x, max_y };
+        return Rectangle<T>{ min_x, min_y, max_x, max_y };
     }
 
 }

@@ -1,119 +1,17 @@
 #pragma once
 
-#include <cmath>
-#include <queue>
-#include <utility>
-
-#include "functions/area.hpp"
-#include "functions/envelope.hpp"
-#include "functions/distance.hpp"
-#include "functions/util.hpp"
 #include "model/geometry/point.hpp"
 #include "model/geometry/rectangle.hpp"
+#include "model/geometry/ring.hpp"
 #include "model/geometry/polygon.hpp"
 #include "model/geometry/multipolygon.hpp"
-#include "model/geometry/ring.hpp"
 
-using namespace model;
+#include "functions/area.hpp"
+
+using namespace model::geometry;
 
 namespace functions
 {
-
-    namespace detail
-    {
-
-        /**
-         * 
-         */
-        template <typename T>
-        inline std::pair<geometry::Point<T>, double> center_and_area(
-            const geometry::Ring<T>& ring,
-            const std::string winding = "ccw"
-        ){
-            // Prepare the result centroid
-            geometry::Point<T> center{ 0, 0 };
-            // Check if the ring is valid
-            if (ring.size() < 2)
-            {
-                return std::make_pair(center, 0.0);
-            }
-            // Calculate the center of the ring according to its winding
-            double area = 0.0;
-            double f = 0.0;
-            const geometry::Point<T> first = ring.front();
-            if (winding == "cw")
-            {
-                for (size_t i = ring.size() - 1; i > 0; i--)
-                {
-                    const geometry::Point<T>& p1 = ring.at(i);
-                    const geometry::Point<T>& p2 = ring.at(i - 1);
-                    f = (p1.x() - first.x()) * (p2.y() - first.y())
-                    - (p1.y() - first.y()) * (p2.x() - first.x());
-                    area += f;
-                    center.x() += (p1.x() + p2.x() - 2 * first.x()) * f;
-                    center.y() += (p1.y() + p2.y() - 2 * first.y()) * f;
-                }
-            }
-            else
-            {
-                for (size_t i = 0; i < ring.size() - 1; i++)
-                {
-                    const geometry::Point<T>& p1 = ring.at(i);
-                    const geometry::Point<T>& p2 = ring.at(i + 1);
-                    f = (p1.x() - first.x()) * (p2.y() - first.y())
-                    - (p1.y() - first.y()) * (p2.x() - first.x());
-                    area += f;
-                    center.x() += (p1.x() + p2.x() - 2 * first.x()) * f;
-                    center.y() += (p1.y() + p2.y() - 2 * first.y()) * f;
-                }
-            }
-            // Calculate the resulting area
-            area *= 0.5;
-            // Remove the area factor from the center
-            if (area > 0)
-            {
-                center /= area * 6;
-            }
-            // Remove the first point from the center
-            center += first;
-            // Return the calculated centroid and area
-            return std::make_pair(center, area);
-        }
-
-        /**
-         * 
-         */
-        template <typename T>
-        inline std::pair<geometry::Point<T>, double> center_and_area(const geometry::Polygon<T>& polygon)
-        {
-            // Prepare the result center point
-            geometry::Point<T> center;
-            double area = 0.0;
-            // Calculate the centerpoint and surface area of the outer ring,
-            // weigh the center by the surface area and add it to the result
-            auto [outer_center, outer_area] = center_and_area(polygon.outer(), "ccw");
-            center += outer_center * outer_area;
-            // Repeat this process for each inner ring of the polygon
-            double inner_areas = 0.0;
-            for (const geometry::Ring<T>& inner : polygon.inners())
-            {
-                auto [inner_center, inner_area] = center_and_area(inner, "cw");
-                center += inner_center * inner_area;
-                inner_areas += inner_area;
-            }
-            // Remove the area weights from the center point
-            double area_sum = outer_area + inner_areas;
-            if (area_sum > 0)
-            {
-                center /= area_sum;
-            }
-            // Return the resulting centroid and surface area
-            return std::make_pair(center, outer_area - inner_areas);
-        }
-        
-    }
-
-    /* Functions */
 
     /**
      * Calculate the centerpoint of a rectangle.
@@ -122,15 +20,12 @@ namespace functions
      * @return A pair of the center point and its distance 
      */
     template <typename T>
-    inline geometry::Point<T> center(const geometry::Rectangle<T>& rectangle)
+    inline Point<T> center(const Rectangle<T>& rectangle)
     {  
-        double half_width = rectangle.width() / 2;
-        double half_height = rectangle.height() / 2;
-        geometry::Point<T> center{
-            rectangle.min().x() + half_width,
-            rectangle.min().y() + half_height
+        return Point<T>{
+            rectangle.min().x() + rectangle.width() / 2,
+            rectangle.min().y() + rectangle.height() / 2
         };
-        return std::make_pair(center, std::min(half_width, half_height));
     }
 
     /**
@@ -144,10 +39,31 @@ namespace functions
      * @return     The center point of the ring
      */
     template <typename T>
-    inline geometry::Point<T> center(const geometry::Ring<T>& ring, const std::string winding = "ccw")
+    inline Point<T> center(const Ring<T>& ring)
     {
-        auto [center, area] = detail::center_and_area(ring, winding);
-        return center;
+        Point<T> c{ 0, 0 };
+        double a = 0.0;
+        double f = 0.0;
+
+        const Point<T> first = ring.front();
+        for (std::size_t i = 0; i < ring.size() - 1; i++)
+        {
+            const Point<T>& p1 = ring.at(i);
+            const Point<T>& p2 = ring.at(i + 1);
+            f = (p1.x() - first.x()) * (p2.y() - first.y())
+              - (p1.y() - first.y()) * (p2.x() - first.x());
+            a += f;
+            c.x() += (p1.x() + p2.x() - 2 * first.x()) * f;
+            c.y() += (p1.y() + p2.y() - 2 * first.y()) * f;
+        }
+
+        if (a != 0)
+        {
+            c /= a * 3;
+        }
+        c += first;
+
+        return c;
     }
 
     /**
@@ -159,10 +75,30 @@ namespace functions
      * @return        The center point of the polygon.
      */
     template <typename T>
-    inline geometry::Point<T> center(const geometry::Polygon<T>& polygon)
+    inline Point<T> center(const Polygon<T>& polygon)
     {
-        auto [center, area] = detail::center_and_area(polygon);
-        return center;
+        Point<T> c = center(polygon.outer());
+
+        if (!polygon.inners().empty())
+        {
+            double a = area(polygon.outer());
+            c *= a;
+
+            for (const Ring<T>& inner : polygon.inners())
+            {
+                Point<T> c_i = center(inner);
+                double a_i = area(inner);
+                c += c_i * a_i;
+                a += a_i;
+            }
+
+            if (a != 0)
+            {
+                c /= a;
+            }
+        }
+
+        return c;
     }
 
     /**
@@ -173,26 +109,25 @@ namespace functions
      * @return The center point of the multipolygon.
      */
     template <typename T>
-    inline geometry::Point<T> center(const geometry::MultiPolygon<T>& multipolygon)
+    inline Point<T> center(const MultiPolygon<T>& multipolygon)
     {
-        // Prepare the result center point
-        geometry::Point<T> center;
-        double area_sum = 0.0f;
-        // Calculate the centerpoint and surface area of the polygon
-        // weigh the center by the surface area and add it to the result
-        for (const geometry::Polygon<T>& polygon : multipolygon.polygons())
+        Point<T> c{ 0.0, 0.0 };
+        double a = 0.0;
+
+        for (const Polygon<T>& polygon : multipolygon.polygons())
         {
-            auto [polygon_center, polygon_area] = detail::center_and_area(polygon);
-            center += polygon_center * polygon_area;
-            area_sum += polygon_area;
+            Point<T> c_p = center(polygon);
+            double a_p = area(polygon);
+            c += c_p * a_p;
+            a += a_p;
         }
-        // Remove the area weights from the center point
-        if (area_sum > 0)
+
+        if (a != 0)
         {
-            center /= area_sum;
+            c /= a;
         }
-        // Return the resulting centroid
-        return center;
+
+        return c;
     }
 
 }
