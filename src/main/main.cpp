@@ -36,7 +36,7 @@
 #include "setup.hpp"
 #include "upload.hpp"
 
-#define DEBUG 1 
+#define DEBUG 0 
 
 namespace po = boost::program_options;
 
