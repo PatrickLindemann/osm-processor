@@ -20,9 +20,9 @@ namespace model
             std::string name;
             geometry::MultiPolygon<T> geometry;
             geometry::Point<T> center;
-            std::vector<object_id_type> children;
             army_type armies;
             std::string color;
+            std::vector<object_id_type> children;
         };
     
         template <typename T>

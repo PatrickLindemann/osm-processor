@@ -52,13 +52,20 @@ protected:
     template <typename T>
     void set(T* variable, std::string key)
     {
-        *variable = m_variables[key].as<T>();
+        *variable = m_variables.at(key).as<T>();
     }
 
     template <typename T>
     void set(T* variable, std::string key, T default_value)
     {
-        *variable = !m_variables[key].defaulted() ? m_variables[key].as<T>() : default_value;
+        if (!m_variables.count(key) || m_variables.at(key).defaulted())
+        {
+            *variable = default_value;
+        }
+        else
+        {
+            *variable = m_variables[key].as<T>();
+        }
     }
 
     template <typename T>

@@ -9,6 +9,7 @@
 #include <osmium/osm/node_ref_list.hpp>
 #include <osmium/osm/item_type.hpp>
 
+#include "functions/envelope.hpp"
 #include "functions/transform.hpp"
 #include "model/types.hpp"
 
@@ -109,13 +110,16 @@ namespace handler
                 // Add the finished polygon to the multipolygon geometry
                 multipolygon.polygons().push_back(polygon);
             }
+            // Calculate the geometry bounding box
+            geometry::Rectangle<T> bounds = functions::envelope(multipolygon);
             // Create the boundary with the converted geometry and other area
             // tag values and add it to the boundary map.
             Boundary<T> boundary{
                 area.id(),
                 area.get_value_by_key("name", ""),
                 boost::lexical_cast<level_type>(area.get_value_by_key("admin_level", "0")),
-                multipolygon
+                multipolygon,
+                bounds
             };
             m_boundaries[area.id()] = boundary;
         }

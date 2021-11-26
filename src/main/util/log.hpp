@@ -33,7 +33,7 @@ namespace util
         /**
          *
          */
-        std::size_t m_step;
+        std::size_t m_step = 0;
 
        /**
         *
@@ -122,7 +122,17 @@ namespace util
         void finish()
         {
             m_times.push_back(std::chrono::steady_clock::now());
-            m_stream << step_header(m_step, m_steps) << "Finished after " << duration(m_step - 1, m_step) << " ms." << std::endl;
+            long d = duration(m_step);
+            m_stream << step_header(m_step, m_steps) << "Finished after ";
+            if (d > 0)
+            {
+                m_stream << d;
+            }
+            else
+            {
+                m_stream << "< 1";
+            }
+            m_stream << " ms." << std::endl;
         }
 
         void end()
@@ -132,15 +142,15 @@ namespace util
 
         /* Misc */
 
-        long duration(std::size_t start, std::size_t end)
+        long duration(std::size_t step)
         {
-            return duration_cast<std::chrono::milliseconds>(m_times.at(end) - m_times.at(start)).count();
+            std::size_t i = 2 * (step - 1);
+            return duration_cast<std::chrono::milliseconds>(m_times.at(i + 1) - m_times.at(i)).count();
         }
 
         long total_duration()
         {
-            steady_clock::time_point last = *std::max_element(m_times.begin(), m_times.end());
-            return duration_cast<std::chrono::milliseconds>(last - m_times.front()).count();
+            return duration_cast<std::chrono::milliseconds>(m_times.back() - m_times.front()).count();
         }
 
     };

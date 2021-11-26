@@ -20,7 +20,7 @@ namespace functions
      * Time complexity: Constant
      */
     template <typename T>
-    double area(const Rectangle<T>& rectangle)
+    inline double area(const Rectangle<T>& rectangle)
     {
         return rectangle.width() * rectangle.height();
     }
@@ -37,7 +37,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const Ring<T>& ring)
+    inline double area(const Ring<T>& ring)
     {
         double l = 0.0;
         double r = 0.0;
@@ -62,7 +62,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const Polygon<T>& polygon)
+    inline double area(const Polygon<T>& polygon)
     {
         double a = area(polygon.outer());
         for (const Ring<T>& inner : polygon.inners())
@@ -81,7 +81,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    double area(const MultiPolygon<T>& multipolygon)
+    inline double area(const MultiPolygon<T>& multipolygon)
     {
         double a = 0.0;
         for (const Polygon<T>& polygon : multipolygon.polygons())

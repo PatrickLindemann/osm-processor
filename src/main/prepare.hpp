@@ -7,6 +7,8 @@
 #include "routine.hpp"
 #include "io/reader/osm_reader.hpp"
 #include "io/writer/osm_writer.hpp"
+
+#include "util/log.hpp"
 #include "util/validate.hpp"
 
 /**
@@ -32,6 +34,11 @@ class Prepare : public Routine
     * The output file format.
     */
     std::string m_format;
+
+    /**
+    * The logger.
+    */
+    util::Logger<std::ostream> m_log{ std::cout };
 
 public:
 
@@ -60,14 +67,17 @@ public:
         this->set<fs::path>(&m_input, "input", util::validate_file);
         this->set<fs::path>(&m_outdir, "outdir", m_dir, util::validate_dir);
         this->set<std::string>(&m_format, "format", util::validate_format);
+        m_log.set_steps(2);
     }
 
     void run() override
     {
         // Read the boundaries from the specified input file
+        m_log.start() << "Preparing file " << m_input << ".\n";
         io::BoundaryReader reader{m_input};
         osmium::memory::Buffer buffer = reader.read();
-
+        m_log.finish();
+        
         // Prepare the outfile path
         std::string outfile_name = std::regex_replace(
             m_input.filename().string(),
@@ -78,8 +88,12 @@ public:
         fs::path outfile_path = m_outdir / fs::path(outfile_name).replace_extension(m_format);
 
         // Write the boundaries to the output
+        m_log.start() << "Writing boundaries to file " << outfile_path << ".\n";
         io::BoundaryWriter writer{outfile_path};
         writer.write(std::move(buffer));
+        m_log.finish();
+
+        m_log.end();
     }   
 
 };

@@ -23,6 +23,7 @@
 #include "functions/transform.hpp"
 
 #include "util/log.hpp"
+#include "util/title.hpp"
 #include "util/validate.hpp"
 
 namespace fs = boost::filesystem;
@@ -116,7 +117,7 @@ public:
             ("input", po::value<fs::path>()->required(), "Sets the input file path.\nAllowed file formats: .osm, .pbf")
             ("outdir,o", po::value<fs::path>()->default_value(""), "Sets the output folder for the generated map files.")
             ("territory-level,t", po::value<level_type>()->default_value(0), "Sets the admin_level of boundaries that will be be used as territories.\nInteger between 1 and 12.")
-            ("bonus-levels,b", po::value<std::vector<level_type>>()->multitoken(),"Sets the admin_level of boundaries that will be be used as bonus links.\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
+            ("bonus-levels,b", po::value<std::vector<level_type>>()->multitoken(), "Sets the admin_level of boundaries that will be be used as bonus links.\nInteger between 1 and 12. If none are specified, no bonus links will be generated.")
             ("width", po::value<int>()->default_value(1000), "Sets the generated map width in pixels.\nIf set to 0, the width will be determined automatically with the height.")
             ("height", po::value<int>()->default_value(0), "Sets the generated map height in pixels.\nIf set to 0, the height will be determined automatically with the width.")
             ("compression-tolerance,c", po::value<double>()->default_value(0.0), "Sets the minimum distance tolerance for the compression algorithm.\nIf set to 0, no compression will be applied.")
@@ -139,7 +140,7 @@ public:
         this->set<fs::path>(&m_input, "input", util::validate_file);
         this->set<fs::path>(&m_outdir, "outdir", m_dir, util::validate_dir);
         this->set<level_type>(&m_territory_level, "territory-level");
-        this->set<std::vector<level_type>>(&m_bonus_levels, "bonus-levels");
+        this->set<std::vector<level_type>>(&m_bonus_levels, "bonus-levels", std::vector<level_type>{});
         std::sort(m_bonus_levels.begin(), m_bonus_levels.end());
         util::validate_levels(m_territory_level, m_bonus_levels);
         this->set<int>(&m_width, "width");
@@ -304,7 +305,7 @@ private:
         return inspector.run(boundaries);
     }
     
-    warzone::Map<T> build_map(std::string name, const container_t& boundaries, const graph_t& neighbors, const hierarchy_t& hierarchy)
+    warzone::Map<T> build_map(std::string name, container_t& boundaries, const graph_t& neighbors, const hierarchy_t& hierarchy)
     {
         mapmaker::MapBuilder<T> builder{};
         builder.name(name);
@@ -330,7 +331,7 @@ private:
         io::MapWriter<T> writer{ file_path };
         m_log.step() << "Exporting map to " << file_path << ".\n";
         writer.write(std::move(map));
-        m_log.step() << "Map export finished\n.";
+        m_log.step() << "Map export finished.\n";
     }
 
     void export_mapdata(warzone::Map<T>&& map)
@@ -346,6 +347,9 @@ public:
 
     void run() override
     {        
+        // Print the title
+        std::cout << util::title() << std::endl;
+
         // Step 1: Read the file header and determine the territory level
         // automatically if it was not set.
         m_log.start() << "Retrieving headers from file " << m_input << ".\n";

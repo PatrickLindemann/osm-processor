@@ -78,7 +78,7 @@ namespace http
             // Add the request headers
             http_request.set(http::field::host, UPLOAD_HOST);
             http_request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-            http_request.set(http::field::content_type, "application/json; utf-8");
+            http_request.set(http::field::content_type, "application/json; charset=utf-8");
             http_request.set(http::field::accept, "*/*");
 
             // Add the request body

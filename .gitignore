@@ -12,3 +12,7 @@ build-win
 # Configs & Settings
 config.json
 CMakeSettings.json
+
+# Map data
+data/
+!data/isle-of-man.osm.pbf

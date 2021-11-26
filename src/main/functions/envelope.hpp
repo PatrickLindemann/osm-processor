@@ -23,7 +23,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    Rectangle<T> envelope(const Ring<T>& ring)
+    inline Rectangle<T> envelope(const Ring<T>& ring)
     {
         std::numeric_limits<T> limits;
         T min_x = limits.max();
@@ -51,7 +51,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    Rectangle<T> envelope(const Polygon<T>& polygon)
+    inline Rectangle<T> envelope(const Polygon<T>& polygon)
     {
         return envelope(polygon.outer());
     }
@@ -67,7 +67,7 @@ namespace functions
      * Time complexity: Linear
      */
     template <typename T>
-    Rectangle<T> envelope(const MultiPolygon<T>& multipolygon)
+    inline Rectangle<T> envelope(const MultiPolygon<T>& multipolygon)
     {
         std::numeric_limits<T> limits;
         T min_x = limits.max();

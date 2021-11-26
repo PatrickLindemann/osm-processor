@@ -1,5 +1,8 @@
 #pragma once
 
+#include "util/color.hpp"
+#include "util/rand.hpp"
+
 using namespace model;
 
 namespace mapmaker
@@ -78,6 +81,39 @@ namespace mapmaker
 
         /* Helper methods */
 
+        void translate(geometry::Point<T>& point)
+        {
+            point.y() = m_height - point.y();
+        }
+
+        void translate(geometry::Ring<T>& ring)
+        {
+            for (geometry::Point<T>& point : ring)
+            {
+                translate(point);
+            }
+        }
+
+        void translate(geometry::MultiPolygon<T>& geometry)
+        {
+            for (geometry::Polygon<T>& polygon : geometry.polygons())
+            {
+                translate(polygon.outer());
+                for (geometry::Ring<T>& inner : polygon.inners())
+                {
+                    translate(inner);
+                }
+            }
+        }
+
+        std::string random_color()
+        {
+            int h = util::rand_between(0, 36) * 10;
+            float s = 1.0f;
+            float l = util::rand_between(0.5f, 1.0f);
+            return util::hsl_to_hex(h, s, l);
+        }
+
         warzone::Territory<T> territory(const Boundary<T>& boundary)
         {
             // Create the territory
@@ -102,12 +138,17 @@ namespace mapmaker
                 m_ids.at(boundary.id),
                 boundary.name,
                 boundary.geometry,
-                boundary.center
+                boundary.center,
+                1, // TODO
+                random_color()
             };
             // Add the children
-            for (const object_id_type& child : m_hierarchy.at(boundary.id))
+            if (m_hierarchy.count(boundary.id))
             {
-                bonus.children.push_back(m_ids.at(child));
+                for (const object_id_type& child : m_hierarchy.at(boundary.id))
+                {
+                    bonus.children.push_back(m_ids.at(child));
+                }
             }
             return bonus;
         }
@@ -119,12 +160,17 @@ namespace mapmaker
                 m_ids.at(boundary.id),
                 boundary.name,
                 boundary.geometry,
-                boundary.center
+                boundary.center,
+                1, // TODO
+                random_color()
             };
             // Add the children
-            for (const object_id_type& child : m_hierarchy.at(boundary.id))
+            if (m_hierarchy.count(boundary.id))
             {
-                super_bonus.children.push_back(m_ids.at(child));
+                for (const object_id_type& child : m_hierarchy.at(boundary.id))
+                {
+                    super_bonus.children.push_back(m_ids.at(child));
+                }
             }
             return super_bonus;
         }
@@ -133,7 +179,7 @@ namespace mapmaker
 
         /* Methods */
 
-        warzone::Map<T> run(const std::map<object_id_type, Boundary<T>>& boundaries)
+        warzone::Map<T> run(std::map<object_id_type, Boundary<T>>& boundaries)
         {
             // Create the total set of levels
             std::set<level_type> levels{ m_territory_level };
@@ -153,6 +199,13 @@ namespace mapmaker
                 m_height,
                 levels
             };
+
+            // Translate the boundaries into the svg coordinate system
+            for (auto& [id, boundary] : boundaries)
+            {
+                translate(boundary.geometry);
+                translate(boundary.center);
+            }
 
             // Fill the id map, which maps the boundary ids to territory, bonus
             // and super bonus ids.

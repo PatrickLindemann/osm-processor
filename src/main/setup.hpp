@@ -2,6 +2,8 @@
 
 #include "io/writer/config_writer.hpp"
 #include "model/config.hpp"
+
+#include "util/log.hpp"
 #include "util/validate.hpp"
 
 /**
@@ -81,10 +83,10 @@ public:
         }
 
         // Write settings to config.json
-        std::cout << "Writing configuration to " << config_path << "." << std::endl;
         model::Config config{m_email, m_api_token};
         io::ConfigWriter writer{config_path};
         writer.write(std::move(config));
+        std::cout << "Wrote configuration to " << config_path << "." << std::endl;
     }
 
 };

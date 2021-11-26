@@ -234,11 +234,25 @@ sudo apt-get install -y -V \
   cmake \
   doxygen \
   graphviz \
+  autoconf \
   libboost-dev \
-  libboost-filesystem-dev
+  libboost-filesystem-dev \
+  libboost-program-options-dev
 ```
 
-All other dependencies will be installed automatically by the super build during the installation.
+All other dependencies will be installed automatically by the super build during the installation. However, you can also install them optionally by yourself:
+
+```
+sudo apt-get install -y -V \
+  libbz2-dev \
+  liblz4-dev \
+  libexpat1-dev \
+  libosmium2-dev \
+  libproj-dev \
+  libsparsehash-dev \
+  libutfcpp-dev \
+  zlib1g-dev
+```
 
 ### Installation
 

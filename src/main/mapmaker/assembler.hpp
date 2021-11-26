@@ -62,7 +62,7 @@ namespace mapmaker
 
         /* Helper Methods */
 
-        void create_area_from_ring(osmium::memory::Buffer& buffer, const osmium::Area& area, const osmium::OuterRing& ring, osmium::object_id_type id)
+        void create_area_from_ring(osmium::memory::Buffer& buffer, const osmium::Area& area, const osmium::OuterRing& ring, osmium::object_id_type id, std::string name)
         {
             // Create a new area from the specified outer ring by copying all
             // attributes and tags from the old area and inserting the inner
@@ -75,8 +75,21 @@ namespace mapmaker
                 .set_changeset(area.changeset())
                 .set_timestamp(area.timestamp())
                 .set_uid(area.uid())
-                .set_user(area.user())
-                .add_item(area.tags());
+                .set_user(area.user());
+
+            // Copy the tags and change the area name
+            {
+                osmium::builder::TagListBuilder tags_builder{ area_builder };
+                for (const osmium::Tag& tag : area.tags())
+                {
+                    if (!std::strcmp(tag.key(), "name"))
+                    {
+                        continue; // ignore
+                    }
+                    tags_builder.add_tag(tag);
+                }
+                tags_builder.add_tag("name", name);
+            }
 
             // Copy the outer ring and the associated inner rings
             area_builder.add_item(ring);
@@ -135,10 +148,11 @@ namespace mapmaker
             mp_manager.for_each_incomplete_relation([&](const osmium::relations::RelationHandle& handle) {
                 incomplete_relations_ids.push_back(handle->id());
                 });
-            if (!incomplete_relations_ids.empty()) {
-                std::cerr << "[Warning] Skipped missing members for these boundaries: "
-                    << util::join(incomplete_relations_ids)
-                    << std::endl;
+            if (!incomplete_relations_ids.empty())
+            {
+                std::cerr << "[Warning] Skipped missing members for "
+                          << incomplete_relations_ids.size()
+                          << " boundaries.\n";
             }
       
             // Add the assembled areas from the area buffer to the input buffer
@@ -147,11 +161,29 @@ namespace mapmaker
             {
                 if (m_split)
                 {
-                    for (const osmium::OuterRing& outer : area.outer_rings())
+                    // Retrieve the area name
+                    std::string name = area.get_value_by_key("name", "");
+                    if (name.empty())
                     {
-                        create_area_from_ring(buffer, area, outer, area.id() * (offset + 1));
+                        name = "Area" + std::to_string(area.id());
+                    }
+                    if (area.outer_rings().size() == 1)
+                    {
+                        create_area_from_ring(buffer, area, *area.outer_rings().begin(), area.id() * (offset + 1), name);
                         buffer.commit();
                         ++offset;
+                    }
+                    else
+                    {
+                        // Create a new area for each outer ring
+                        std::size_t i = 1;
+                        for (const osmium::OuterRing& outer : area.outer_rings())
+                        {
+                            create_area_from_ring(buffer, area, outer, area.id() * (offset + 1), name + ' ' + std::to_string(i));
+                            buffer.commit();
+                            ++i;
+                            ++offset;
+                        }
                     }
                 }
                 else

@@ -10,7 +10,7 @@
 namespace http
 {
 
-    using json = nlohmann::json;
+    using json = nlohmann::ordered_json;
     using namespace model;
 
     /**

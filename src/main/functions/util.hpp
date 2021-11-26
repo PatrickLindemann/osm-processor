@@ -18,7 +18,7 @@ namespace functions
      * @param degrees The angle in degrees
      */
     template <typename T>
-    T radians(T degrees)
+    inline T radians(T degrees)
     {
         return degrees * HALF_C;
     } 
@@ -29,7 +29,7 @@ namespace functions
      * @param radians The angle in radians
      */
     template <typename T>
-    T degrees(T radians)
+    inline T degrees(T radians)
     {
         return radians * TWO_C;
     }
@@ -44,7 +44,7 @@ namespace functions
      * Time complexity: Constant
      */
     template <typename T>
-    double dot(const Point<T>& p, const Point<T>& q)
+    inline double dot(const Point<T>& p, const Point<T>& q)
     {
         return p.x() * q.x() + p.y() * q.y();
     }
@@ -57,7 +57,7 @@ namespace functions
      * @param upper The upper bound of the target interval
      */
     template <typename T>
-    T clamp(T value, T lower, T upper)
+    inline T clamp(T value, T lower, T upper)
     {
         if (value < lower)
         {

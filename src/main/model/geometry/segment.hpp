@@ -25,8 +25,9 @@ namespace model
 
             /* Constructors */
 
-            Segment(Point<T> first, Point<T> last) : points(first, last) {};
-            Segment(std::pair<T, T> segment) : points(segment) {};
+            Segment() {}
+            Segment(Point<T> first, Point<T> last) : points(first, last) {}
+            Segment(std::pair<T, T> segment) : points(segment) {}
 
             /* Accessors */
 

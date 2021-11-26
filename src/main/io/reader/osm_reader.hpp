@@ -86,10 +86,11 @@ namespace io
             manager.for_each_incomplete_relation([&](const osmium::relations::RelationHandle& handle) {
                 incomplete_relations_ids.push_back(handle->id());
             });
-            if (!incomplete_relations_ids.empty()) {
-                std::cerr << "[Warning] Skipped missing members for these boundaries: "
-                          << util::join(incomplete_relations_ids)
-                          << std::endl;
+            if (!incomplete_relations_ids.empty())
+            {
+                std::cerr << "[Warning] Skipped missing members for "
+                    << incomplete_relations_ids.size()
+                    << " boundaries.\n";
             }
 
             // Third pass trough the file: Copy the marked object into the result buffer

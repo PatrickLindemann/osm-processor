@@ -1,12 +1,16 @@
 #pragma once
 
 #include "routine.hpp"
+
+#include "model/config.hpp"
+
 #include "http/mapdata_request.hpp"
 #include "http/mapdata_uploader.hpp"
 #include "http/response.hpp"
 #include "io/reader/config_reader.hpp"
 #include "io/reader/mapdata_reader.hpp"
-#include "model/config.hpp"
+
+#include "util/log.hpp"
 #include "util/validate.hpp"
 
 /**
@@ -40,6 +44,11 @@ class Upload : public Routine
      */
     fs::path m_config_path;
 
+    /**
+    * The logger.
+    */
+    util::Logger<std::ostream> m_log{ std::cout };
+
 public:
 
     /* Constructors */
@@ -53,6 +62,7 @@ public:
             ("help,h", "Shows this help message.");
         m_positional.add("input", 1);
         m_positional.add("map-id", 1);
+        m_log.set_steps(3);
     }
 
     /* Override Methods */
@@ -68,25 +78,33 @@ public:
         this->set<fs::path>(&m_input, "input", util::validate_file);
         this->set<long>(&m_id, "map-id", util::validate_id);
         this->set<fs::path>(&m_config_path, "config", m_dir / "config.json", util::validate_file);
+        m_log.set_steps(3);
     }
 
     void run() override
     {
         // Read the warzone mapdata file
+        m_log.start() << "Reading mapdata from file " << m_input << ".\n";
         io::MapdataReader<T> mapdata_reader{m_input.string()};
         model::warzone::Map<T> map = mapdata_reader.read();
+        m_log.finish();
 
         // Read the config file
+        m_log.start() << "Reading configration from " << m_config_path << ".\n";
         io::ConfigReader config_reader{m_config_path.string()};
         model::Config config = config_reader.read();
+        m_log.finish();
 
         // Send the request
-        std::cout << "Sending request for map " << m_id << " to " << "https://www.warzone.com/API/SetMapDetails" << std::endl;
+        m_log.start() << "Sending request for map " << m_id << " to " << "https://www.warzone.com/API/SetMapDetails" << ".\n";
         http::MapdataRequest<T> request{map, config, m_id};
         http::MapdataUploader<T> uploader{};
         http::Response response = uploader.send(request);
-        std::cout << "Received response: " << response.code() << " " << response.reason() << '\n'
-                    << response.body() << std::endl;
+        m_log.step() << "Received response: " << response.code() << " " << response.reason() << '\n'
+            << response.body() << ".\n";
+        m_log.finish();
+
+        m_log.end();
     }
 
 };

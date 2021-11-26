@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/geometry/point.hpp"
+#include "model/geometry/rectangle.hpp"
 #include "model/geometry/multipolygon.hpp"
 #include "model/types.hpp"
 
@@ -13,8 +14,9 @@ namespace model
         object_id_type id;
         std::string name;
         level_type level;
-        model::geometry::MultiPolygon<T> geometry;
-        model::geometry::Point<T> center;
+        geometry::MultiPolygon<T> geometry;
+        geometry::Rectangle<T> bounds;
+        geometry::Point<T> center;
     };
 
 }

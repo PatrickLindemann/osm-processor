@@ -8,7 +8,6 @@
 namespace io
 {
 
-    using json = nlohmann::json;
     using namespace model;
 
     template <typename T>
@@ -21,7 +20,8 @@ namespace io
         const double BONUS_LINK_SIZE = 20.0;
         const double BONUS_LINK_ROUNDING = 3.0;
 
-        const double SUPER_BONUS_LINK_SIZE = 20.0;
+        //  const double SUPER_BONUS_LINK_SIZE = 30.0;
+        // const double SUPER_BONUS_LINK_SIDE_LENGTH = 40.0;
 
     public:
 
@@ -100,7 +100,7 @@ namespace io
             {
                 ofs << "<path "
                     << "name=\"" << super_bonus.name << "\" "
-                    << "style=\"fill: " << super_bonus.color << "; stroke:black; stroke-width: 3px;\" "
+                    << "style=\"fill:none; stroke:black; stroke-width: 3px;\" "
                     << "d=\"";
                 write_geometry(ofs, super_bonus.geometry);
                 ofs << "\"/>"; // End path
@@ -111,7 +111,7 @@ namespace io
             {
                 ofs << "<path "
                     << "name=\"" << bonus.name << "\" "
-                    << "style=\"fill: " << bonus.color << "; stroke:black; stroke-width: 2px;\" "
+                    << "style=\"fill:none; stroke:black; stroke-width: 2px;\" "
                     << "d=\"";
                 write_geometry(ofs, bonus.geometry);
                 ofs << "\"/>"; // End path
@@ -123,7 +123,7 @@ namespace io
                 ofs << "<path "
                     << "id=\"Territory_" << territory.id << "\" "
                     << "name=\"" << territory.name << "\" "
-                    << "style=\"stroke:black; fill:none; stroke-width: 1px;\" "
+                    << "style=\"fill:none; stroke:black; stroke-width: 1px;\" "
                     << "d=\"";
                 write_geometry(ofs, territory.geometry);
                 ofs << "\"/>"; // End path
@@ -145,9 +145,8 @@ namespace io
             for (const warzone::Bonus<T>& bonus : map.bonuses)
             {
                 ofs << "<rect "
-                    << "id=\"BonusLink_" << bonus.id << "\" "
-                    << "name=\"" << bonus.name << "\" "
-                    << "x=\"" << bonus.center.x()- (BONUS_LINK_SIZE / 2) << "\" "
+                    << "id=\"BonusLink_" << bonus.name << "\" "
+                    << "x=\"" << bonus.center.x() - (BONUS_LINK_SIZE / 2) << "\" "
                     << "y=\"" << bonus.center.y() - (BONUS_LINK_SIZE / 2) << "\" "
                     << "width=\"" << BONUS_LINK_SIZE << "\" "
                     << "height=\"" << BONUS_LINK_SIZE << "\" "
@@ -157,7 +156,21 @@ namespace io
                     << "/>";
             }
 
-            // TODO Octagons for super bonuses
+            // Write the super bonus links
+            //for (const warzone::SuperBonus<t>& super_bonus : map.super_bonuses)
+            //{
+            //    ofs << "<rect "
+            //        << "id=\"bonuslink_" << super_bonuses.name << "\" "
+            //        << "name=\"" << bonus.name << "\" "
+            //        << "x=\"" << bonus.center.x() - (bonus_link_size / 2) << "\" "
+            //        << "y=\"" << bonus.center.y() - (bonus_link_size / 2) << "\" "
+            //        << "width=\"" << bonus_link_size << "\" "
+            //        << "height=\"" << bonus_link_size << "\" "
+            //        << "rx=\"" << bonus_link_rounding << "\" "
+            //        << "ry=\"" << bonus_link_rounding << "\" "
+            //        << "style=\"fill: " << bonus.color << "; stroke: black;\" "
+            //        << "/>";
+            //}
 
             ofs << "</svg>" << std::endl;
         }
