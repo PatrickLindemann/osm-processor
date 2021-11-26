@@ -64,7 +64,7 @@ namespace io
                 m_path.string(),
                 file.format(),
                 file.compression(),
-                file.buffer_size(),
+                fs::file_size(m_path),
                 count_handler.count(osmium::item_type::node),
                 count_handler.count(osmium::item_type::way),
                 count_handler.count(osmium::item_type::relation),
